@@ -41,6 +41,14 @@ function formatRemaining(ms: number): string {
   return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 }
 
+function getMerchantContact(payment: Payment): { name?: string; email?: string } {
+  const p = payment as any;
+  return {
+    name: p.merchantName ?? p.merchant?.name ?? undefined,
+    email: p.merchantEmail ?? p.merchant?.email ?? undefined,
+  };
+}
+
 export default function PayPage({ params }: { params: { paymentId: string } }) {
   const [payment, setPayment] = useState<Payment | null>(null);
   const [loading, setLoading] = useState(true);
@@ -172,6 +180,55 @@ export default function PayPage({ params }: { params: { paymentId: string } }) {
           <p className="text-gray-600">
             {loadError ? 'Something went wrong loading this payment — try again' : 'Payment not found'}
           </p>
+        </div>
+      </div>
+    );
+  }
+
+  const isExpired = payment.status === 'expired' || isExpiredByClock;
+
+  if (isExpired) {
+    const merchant = getMerchantContact(payment);
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="card w-full max-w-[92vw] xs:max-w-sm">
+          <div className="p-4 xs:p-6 border-b border-gray-100 text-center">
+            <p className="text-sm text-gray-500 font-medium">DupDub</p>
+            <h1 className="text-3xl font-bold mt-1">{formatUsd(payment.amountUsd)}</h1>
+            {payment.description && <p className="text-sm text-gray-500 mt-1 break-words">{payment.description}</p>}
+          </div>
+
+          <div className="p-4 xs:p-6 text-center">
+            <div className="mx-auto mb-4 w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center">
+              <Clock className="w-8 h-8 text-gray-400" />
+            </div>
+            <h2 className="text-lg font-semibold text-gray-900">This payment has expired</h2>
+            <p className="text-sm text-gray-500 mt-2">
+              This payment link is no longer valid. Please contact the merchant to request a new payment link.
+            </p>
+
+            {(merchant.name || merchant.email) && (
+              <div className="mt-4 rounded-lg bg-gray-50 border border-gray-200 p-3 text-sm text-gray-700">
+                <p className="font-medium text-gray-900 mb-1">Contact the merchant</p>
+                {merchant.name && <p className="break-words">{merchant.name}</p>}
+                {merchant.email && (
+                  <a
+                    href={`mailto:${merchant.email}`}
+                    className="text-brand-600 hover:underline break-all"
+                  >
+                    {merchant.email}
+                  </a>
+                )}
+              </div>
+            )}
+
+            <a
+              href="/dashboard/payments/new"
+              className="btn-primary inline-flex items-center justify-center w-full mt-6"
+            >
+              Create new payment
+            </a>
+          </div>
         </div>
       </div>
     );
