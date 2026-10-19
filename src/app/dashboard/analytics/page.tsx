@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { paymentsApi } from '@/lib/api';
 import { formatUsd } from '@/lib/utils';
 import type { PaymentStats } from '@/lib/types';
+import RevenueByMethodCard from './RevenueByMethodCard';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 
 // Recharts is a large library only used on this page. Wrapping the chart
@@ -133,6 +134,8 @@ export default function AnalyticsPage() {
               </table>
             </div>
           </div>
+
+          <RevenueByMethodCard />
         </div>
       )}
     </div>
