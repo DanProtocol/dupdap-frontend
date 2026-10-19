@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+      "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  }
+}
+
 /* Print stylesheet (#548): hide app chrome and show only receipt/settlement data. */
 @media print {
   /* Hide navigation, sidebar, and interactive controls. */
@@ -161,6 +170,12 @@
       transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(1);
       opacity: 0;
     }
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: var(--font-sans);
   }
 
   @media (prefers-reduced-motion: reduce) {
