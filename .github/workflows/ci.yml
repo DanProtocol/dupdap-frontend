@@ -27,6 +27,13 @@ jobs:
         run: npx tsc --noEmit
 
       - name: Lint
+        run: npm run lint -- --max-warnings=0
+
+      - run: npx prettier --check .
+
+      - run: npm run verify
+
+      - name: Lint
         run: npx eslint .
 
       - name: Build
