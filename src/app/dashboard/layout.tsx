@@ -19,12 +19,14 @@ import {
 import { useAuthStore } from '@/lib/store';
 import { isAdmin } from '@/lib/auth';
 import { isNavItemActive } from '@/lib/nav-active';
-import { cn } from '@/lib/utils';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import WhatsNewBanner from '@/components/WhatsNewBanner';
 import { useFocusTrap } from '@/lib/useFocusTrap';
 import { useAdminGuard, useAdminRedirect } from '@/lib/useAdminGuard';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { cn } from '@/lib/utils';
-import WhatsNewBanner from '@/components/WhatsNewBanner';
+import { useAdminGuard, useAdminRedirect } from '@/lib/useAdminGuard';
+import { cn } from '@/lib/utils';
 
 declare global {
   interface Window {
@@ -91,6 +93,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // focus-trap so focus moves into the drawer on open, Tab cycles inside it,
   // and focus returns to the hamburger button on close (#356).
   const drawerRef = useFocusTrap<HTMLElement>(mobileNavOpen);
+  // Admin guard — determines whether the current merchant may view admin routes.
+  // Must be called unconditionally (Rules of Hooks) even for non-admin paths;
+  // useAdminGuard returns 'authorized' for all non-admin paths (#357).
+  const adminStatus = useAdminGuard();
   const tutorialRef = useFocusTrap<HTMLDivElement>(tutorialOpen);
 
   // Auth guard (#490): once Zustand has rehydrated, redirect unauthenticated
@@ -232,6 +238,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <PlayCircle className="w-4 h-4" />
           Watch onboarding tutorial
         </button>
+        <ThemeToggle />
         <button
           onClick={() => {
             if (!confirmNavigation()) return;
