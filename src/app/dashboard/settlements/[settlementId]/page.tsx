@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ArrowLeft, Loader2, XCircle } from 'lucide-react';
 import { settlementsApi } from '@/lib/api';
 import { formatUsd, formatDate, STATUS_COLORS } from '@/lib/utils';
+import type { Settlement } from '@/lib/types';
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   if (value === undefined || value === null || value === '') return null;

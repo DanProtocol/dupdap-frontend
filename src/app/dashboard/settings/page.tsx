@@ -9,6 +9,7 @@ import { FormField } from '@/components/FormField';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import BankAccountsSection from '@/components/BankAccountsSection';
 import { getErrorMessage } from '@/lib/errors';
+import { useOnlineStatus } from '@/lib/useOnlineStatus';
 import { maskSecret } from '@/lib/utils';
 import { ApiRateLimitIndicator } from '@/components/ApiRateLimitIndicator';
 
@@ -16,6 +17,7 @@ const EMPTY_FORM = { businessName: '', country: '', bankAccountNumber: '', bankC
 
 export default function SettingsPage() {
   const { merchant } = useAuthStore();
+  const isOnline = useOnlineStatus();
   const [form, setForm] = useState(EMPTY_FORM);
   const [savedForm, setSavedForm] = useState(EMPTY_FORM);
   const [currentScopes, setCurrentScopes] = useState<string[]>([]);
@@ -101,6 +103,10 @@ export default function SettingsPage() {
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isOnline) {
+      toast.error('You are offline. Reconnect to save your changes.');
+      return;
+    }
     setSaving(true);
     setFieldErrors({});
     try {
@@ -132,6 +138,10 @@ export default function SettingsPage() {
   };
 
   const generateKey = async () => {
+    if (!isOnline) {
+      toast.error('You are offline. Reconnect to generate an API key.');
+      return;
+    }
     // Generating a key invalidates any existing one and the secret is only
     // shown once, so confirm before calling the API.
     if (!window.confirm('Generating a new API key will replace your current key. Continue?')) {
@@ -197,7 +207,7 @@ export default function SettingsPage() {
               error={fieldErrors[key]}
             />
           ))}
-          <button type="submit" disabled={saving} className="btn-primary">
+          <button type="submit" disabled={saving || !isOnline} className="btn-primary">
             {saving ? 'Saving...' : 'Save changes'}
           </button>
         </form>
@@ -282,7 +292,7 @@ export default function SettingsPage() {
           <button
             type="button"
             onClick={() => setConfirmingGenerate(true)}
-            disabled={generatingKey || selectedScopes.length === 0}
+            disabled={generatingKey || selectedScopes.length === 0 || !isOnline}
             className="btn-primary"
           >
             {generatingKey ? 'Generating...' : 'Generate new API key'}

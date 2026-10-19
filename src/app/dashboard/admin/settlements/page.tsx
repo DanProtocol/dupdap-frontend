@@ -17,6 +17,7 @@ import { useAuthStore } from '@/lib/store';
 import { adminApi } from '@/lib/api';
 import { formatUsd, formatDate, STATUS_COLORS } from '@/lib/utils';
 import { getErrorMessage } from '@/lib/errors';
+import { useOnlineStatus } from '@/lib/useOnlineStatus';
 import { SkeletonList, SkeletonTableRows } from '@/components/Skeleton';
 import ConfirmDialog from '@/components/ConfirmDialog';
 
@@ -87,6 +88,7 @@ function escapeCsvValue(value: string | number): string {
 export default function AdminSettlementsPage() {
   const router = useRouter();
   const { token } = useAuthStore();
+  const isOnline = useOnlineStatus();
   const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
@@ -211,6 +213,10 @@ export default function AdminSettlementsPage() {
   };
 
   const handleRetry = async (settlementId: string) => {
+    if (!isOnline) {
+      toast.error('You are offline. Reconnect to retry this settlement.');
+      return;
+    }
     try {
       setActionLoading(settlementId);
       await adminApi.retrySettlement(settlementId);
@@ -223,6 +229,10 @@ export default function AdminSettlementsPage() {
   };
 
   const handleApprove = async (settlementId: string) => {
+    if (!isOnline) {
+      toast.error('You are offline. Reconnect to approve this settlement.');
+      return;
+    }
     try {
       setActionLoading(settlementId);
       await adminApi.approveSettlement(settlementId);
@@ -413,8 +423,32 @@ export default function AdminSettlementsPage() {
                       {settlement.status}
                     </span>
                   </div>
-                  <div className="mt-1 text-sm text-gray-600">
-                    {formatUsd(settlement.totalAmountUsd)} · {formatDate(settlement.createdAt)}
+                  <div className="text-sm text-gray-900">{settlement.merchant?.businessName || 'Unknown'}</div>
+                  <div className="text-sm font-medium text-gray-900">{formatUsd(settlement.netAmountUsd)}</div>
+                  <div className="text-xs text-gray-500">Fee: {formatUsd(settlement.feeAmountUsd)}</div>
+                  <div className="text-xs text-gray-500">{formatDate(settlement.createdAt)}</div>
+                  {settlement.failureReason && (
+                    <div className="text-xs text-red-600">{settlement.failureReason}</div>
+                  )}
+                  <div className="flex items-center gap-2 pt-1">
+                    {settlement.status === 'failed' && (
+                      <button
+                        onClick={() => setPendingAction({ type: 'retry', settlementId: settlement.id })}
+                        disabled={actionLoading === settlement.id || !isOnline}
+                        className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 disabled:opacity-50"
+                      >
+                        {actionLoading === settlement.id ? 'Retrying...' : 'Retry'}
+                      </button>
+                    )}
+                    {settlement.status === 'pending_approval' && (
+                      <button
+                        onClick={() => setPendingAction({ type: 'approve', settlementId: settlement.id })}
+                        disabled={actionLoading === settlement.id || !isOnline}
+                        className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200 disabled:opacity-50"
+                      >
+                        {actionLoading === settlement.id ? 'Approving...' : 'Approve'}
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -474,6 +508,31 @@ export default function AdminSettlementsPage() {
                             Approve
                           </button>
                         )}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-500">
+                        {formatDate(settlement.createdAt)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          {settlement.status === 'failed' && (
+                            <button
+                              onClick={() => setPendingAction({ type: 'retry', settlementId: settlement.id })}
+                              disabled={actionLoading === settlement.id || !isOnline}
+                              className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 disabled:opacity-50"
+                            >
+                              {actionLoading === settlement.id ? 'Retrying...' : 'Retry'}
+                            </button>
+                          )}
+                          {settlement.status === 'pending_approval' && (
+                            <button
+                              onClick={() => setPendingAction({ type: 'approve', settlementId: settlement.id })}
+                              disabled={actionLoading === settlement.id || !isOnline}
+                              className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200 disabled:opacity-50"
+                            >
+                              {actionLoading === settlement.id ? 'Approving...' : 'Approve'}
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
