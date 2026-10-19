@@ -19,13 +19,16 @@ import {
 import { useAuthStore } from '@/lib/store';
 import { isAdmin } from '@/lib/auth';
 import { isNavItemActive } from '@/lib/nav-active';
+import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import WhatsNewBanner from '@/components/WhatsNewBanner';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { NotificationCenter } from '@/components/NotificationCenter';
 import { useAdminGuard, useAdminRedirect } from '@/lib/useAdminGuard';
 import { useFocusTrap } from '@/lib/useFocusTrap';
-import { cn } from '@/lib/utils';
+import { useLocale } from '@/lib/locale';
+import { LocaleSwitcher } from '@/components/LocaleSwitcher';
+import { useAdminGuard, useAdminRedirect } from '@/lib/useAdminGuard';
 
 declare global {
   interface Window {
@@ -37,15 +40,8 @@ declare global {
   }
 }
 
-const navItems = [
-  { href: '/dashboard', label: 'Overview', icon: LayoutDashboard, exact: true },
-  { href: '/dashboard/payments', label: 'Payments', icon: CreditCard },
-  { href: '/dashboard/settlements', label: 'Settlements', icon: Banknote },
-  { href: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
-  { href: '/dashboard/webhooks', label: 'Webhooks', icon: Webhook },
-  { href: '/dashboard/settings', label: 'Settings', icon: Settings },
-  { href: '/dashboard/admin/settlements', label: 'Admin Settlements', icon: Shield, adminOnly: true },
-];
+const UNSAVED_CHANGES_MESSAGE =
+  'You have unsaved changes. Are you sure you want to leave this page?';
 
 // Merchant onboarding walkthrough (#582). The video covers registration
 // through first payment; the transcript keeps it accessible.
@@ -74,14 +70,12 @@ function LoadingState() {
   );
 }
 
-const UNSAVED_CHANGES_MESSAGE =
-  'You have unsaved changes. Are you sure you want to leave this page?';
-
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { merchant, token, logout, hasHydrated } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const { t } = useLocale();
   const [tutorialOpen, setTutorialOpen] = useState(false);
 
   // The admin authorization gate is shared with the admin layout so the
@@ -107,6 +101,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // Auth guard (#490): once Zustand has rehydrated, redirect unauthenticated
   // visitors to the login page before any dashboard content is rendered.
+
+  // Nav items are derived inside the component so labels can be translated.
+  const navItems = [
+    { href: '/dashboard', label: t('nav.overview'), icon: LayoutDashboard, exact: true },
+    { href: '/dashboard/payments', label: t('nav.payments'), icon: CreditCard },
+    { href: '/dashboard/settlements', label: t('nav.settlements'), icon: Banknote },
+    { href: '/dashboard/analytics', label: t('nav.analytics'), icon: BarChart3 },
+    { href: '/dashboard/webhooks', label: t('nav.webhooks'), icon: Webhook },
+    { href: '/dashboard/settings', label: t('nav.settings'), icon: Settings },
+    { href: '/dashboard/admin/settlements', label: t('nav.adminSettlements'), icon: Shield, adminOnly: true },
+  ];
+
   useEffect(() => {
     if (!hasHydrated) return;
     if (!token) {
@@ -211,7 +217,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </button>
       </div>
 
-      <nav aria-label="Main navigation" className="flex-1 p-4 space-y-1">
+      <nav aria-label="Main navigation" className="flex-1 p-4 space-y-1 overflow-y-auto">
         {visibleNavItems.map(({ href, label, icon: Icon, exact }) => {
           // Segment-aware match so a sibling route that merely shares a
           // prefix (e.g. /dashboard/settlements-export) is not highlighted (#358).
@@ -236,7 +242,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         })}
       </nav>
 
-      <div className="p-4 border-t border-gray-100 dark:border-gray-800 space-y-2">
+      <div className="p-4 border-t border-gray-100 dark:border-gray-800 space-y-3">
+        {/* Language switcher — lets merchants pick English, French, Pidgin, or Hausa */}
+        <LocaleSwitcher />
         <button
           onClick={() => setTutorialOpen(true)}
           className="flex items-center gap-3 px-3 py-2 text-sm text-brand-600 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300 w-full rounded-lg hover:bg-brand-50 dark:hover:bg-brand-950 transition-colors"
@@ -255,7 +263,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           className="flex items-center gap-3 px-3 py-2 text-sm text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 w-full rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
         >
           <LogOut className="w-4 h-4" aria-hidden="true" />
-          Sign out
+          {t('nav.signOut')}
         </button>
       </div>
     </>
@@ -422,10 +430,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* Main content area */}
+      {/* Main content area — offset on desktop to clear the fixed sidebar */}
       <main
         id="main-content"
-        className="flex-1 overflow-auto pt-14 md:pt-0 print:ml-0 print:pt-0"
+        className="flex-1 overflow-auto pt-14 md:pt-0 md:ml-64 min-w-0 print:ml-0 print:pt-0"
         aria-label="Main content"
       >
         <OfflineBanner />
