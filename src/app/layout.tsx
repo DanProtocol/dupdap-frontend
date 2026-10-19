@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { AuthRedirectSetup } from '@/components/AuthRedirectSetup';
+import { CookieConsent } from '@/components/CookieConsent';
 import { Providers } from './providers';
 import './globals.css';
 
@@ -54,6 +55,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {/* Live-region semantics are set per-call by '@/lib/toast', because
               react-hot-toast ignores per-type `ariaProps` in `toastOptions`. */}
           <Toaster position="top-right" />
+          <CookieConsent />
           <Analytics />
           <SpeedInsights />
         </Providers>

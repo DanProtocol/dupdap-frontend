@@ -2,6 +2,7 @@
  * Tests for /pay/[paymentId] page UI states
  * Issue: loading spinner, "Payment not found", and success QR/status UI
  * Issue #310: countdown timer must not re-render the whole page every tick
+ * Issue #575: settled status shows a one-shot, reduced-motion-aware success animation
  * Issue #558: expired payment links render a dedicated expired state
  */
 import React from 'react';
@@ -44,6 +45,7 @@ describe('PayPage', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.unstubAllGlobals();
   });
 
   it('renders the payment amount', async () => {
@@ -116,6 +118,53 @@ describe('PayPage', () => {
     vi.useRealTimers();
   });
 
+  it('plays a one-shot success animation when the payment is settled (#575)', async () => {
+    mockedGetByReference.mockResolvedValue({
+      data: { ...basePayment, status: 'settled' },
+    } as never);
+
+    render(<PayPage params={{ paymentId: 'ref_1' }} />);
+
+    const animation = await screen.findByTestId('payment-success-animation');
+    // Plays once, never loops.
+    expect(animation).toHaveAttribute('data-iteration-count', '1');
+    expect(animation).toHaveAttribute('data-loop', 'false');
+  });
+
+  it('does not render the success animation for non-settled payments (#575)', async () => {
+    mockedGetByReference.mockResolvedValue({ data: basePayment } as never);
+
+    render(<PayPage params={{ paymentId: 'ref_1' }} />);
+
+    await waitFor(() => expect(screen.getByText('$25.00')).toBeInTheDocument());
+    expect(screen.queryByTestId('payment-success-animation')).not.toBeInTheDocument();
+  });
+
+  it('skips the success animation when prefers-reduced-motion is set (#575)', async () => {
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn().mockImplementation((query: string) => ({
+        matches: query.includes('prefers-reduced-motion'),
+        media: query,
+        onchange: null,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }))
+    );
+
+    mockedGetByReference.mockResolvedValue({
+      data: { ...basePayment, status: 'settled' },
+    } as never);
+
+    render(<PayPage params={{ paymentId: 'ref_1' }} />);
+
+    await waitFor(() => expect(screen.getByText('$25.00')).toBeInTheDocument());
+    expect(screen.queryByTestId('payment-success-animation')).not.toBeInTheDocument();
+  });
+
   it('renders a dedicated expired state instead of the QR code (#558)', async () => {
     const expiresAt = new Date(Date.now() - 60 * 1000).toISOString();
     mockedGetByReference.mockResolvedValue({ data: { ...basePayment, expiresAt } } as never);
@@ -137,6 +186,16 @@ describe('PayPage', () => {
         merchantName: 'Acme Store',
         merchantEmail: 'merchant@acme.test',
       },
+    } as never);
+
+    render(<PayPage params={{ paymentId: 'ref_1' }} />);
+
+    await waitFor(() =>
+      expect(screen.getByText(/This payment has expired/i)).toBeInTheDocument()
+    );
+    expect(screen.getByText(/Acme Store/)).toBeInTheDocument();
+    expect(screen.getByText(/merchant@acme.test/)).toBeInTheDocument();
+  });
     } as never);
 
     render(<PayPage params={{ paymentId: 'ref_1' }} />);
