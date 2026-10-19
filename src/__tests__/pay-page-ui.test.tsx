@@ -2,6 +2,7 @@
  * Tests for /pay/[paymentId] page UI states
  * Issue: loading spinner, "Payment not found", and success QR/status UI
  * Issue #310: countdown timer must not re-render the whole page every tick
+ * Issue #499: Freighter wallet integration (detect, pay, tx hash, QR fallback)
  * Issue #545: Download QR button (SVG + optional PNG 512x512)
  * Issue #579: copy buttons for Stellar memo and deposit address
  * Issue #575: settled status shows a one-shot, reduced-motion-aware success animation
@@ -43,6 +44,12 @@ const basePayment = {
 describe('PayPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default: no Freighter extension present.
+    delete (window as unknown as { freighter?: unknown }).freighter;
+  });
+
+  afterEach(() => {
+    delete (window as unknown as { freighter?: unknown }).freighter;
   });
 
   afterEach(() => {
@@ -149,6 +156,24 @@ describe('PayPage', () => {
     expect(screen.getByTestId('qr-code')).toBe(qrBefore);
 
     vi.useRealTimers();
+  });
+
+  it('falls back to the QR code when Freighter is not detected (#499)', async () => {
+    mockedGetByReference.mockResolvedValue({ data: basePayment } as never);
+    render(<PayPage params={{ paymentId: 'ref_1' }} />);
+
+    await screen.findByTestId('qr-code');
+    expect(screen.queryByRole('button', { name: /pay with freighter/i })).not.toBeInTheDocument();
+  });
+
+  it('shows the Pay with Freighter button when the extension is present (#499)', async () => {
+    (window as unknown as { freighter: unknown }).freighter = { isConnected: vi.fn() };
+    mockedGetByReference.mockResolvedValue({ data: basePayment } as never);
+    render(<PayPage params={{ paymentId: 'ref_1' }} />);
+
+    expect(
+      await screen.findByRole('button', { name: /pay with freighter/i })
+    ).toBeInTheDocument();
   });
 
   it('copies the Stellar memo to the clipboard and shows a Copied! tooltip (#579)', async () => {
