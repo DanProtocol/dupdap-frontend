@@ -93,12 +93,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const drawerRef = useFocusTrap<HTMLElement>(mobileNavOpen);
   const tutorialRef = useFocusTrap<HTMLDivElement>(tutorialOpen);
 
+  // Auth guard (#490): once Zustand has rehydrated, redirect unauthenticated
+  // visitors to the login page before any dashboard content is rendered.
   useEffect(() => {
+    if (!hasHydrated) return;
     if (!token) {
       const next = pathname ? `?next=${encodeURIComponent(pathname)}` : '';
-      router.push(`/auth/login${next}`);
+      router.replace(`/auth/login${next}`);
     }
-  }, [token, router, pathname]);
+  }, [hasHydrated, token, router, pathname]);
 
   useEffect(() => {
     setMobileNavOpen(false);
