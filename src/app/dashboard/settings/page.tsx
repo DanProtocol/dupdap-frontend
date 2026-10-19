@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import Image from 'next/image';
 
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 const ACCEPTED_AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -9,7 +10,7 @@ const AVATAR_SIZE = 256;
 function cropToSquare(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const objectUrl = URL.createObjectURL(file);
-    const image = new Image();
+    const image = new globalThis.Image();
 
     image.onload = () => {
       const side = Math.min(image.width, image.height);
@@ -58,7 +59,9 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
@@ -93,14 +96,25 @@ export default function SettingsPage() {
       <section className="mt-8">
         <h2 className="text-lg font-medium text-gray-900">Merchant avatar</h2>
         <p className="mt-1 text-sm text-gray-500">
-          Upload a logo or photo. JPG, PNG, or WebP up to 2MB. Images are cropped to a 1:1 square.
+          Upload a logo or photo. JPG, PNG, or WebP up to 2MB. Images are
+          cropped to a 1:1 square.
         </p>
 
         <div className="mt-4 flex items-center gap-4">
           <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-gray-100">
             {avatar ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={avatar} alt="Merchant avatar" className="h-full w-full object-cover" />
+              // data: URLs are local canvas output — use unoptimized so
+              // Next.js Image skips its remote optimisation pipeline while
+              // still providing WebP output, lazy-loading attributes, and
+              // size hints for Core Web Vitals on other image uses.
+              <Image
+                src={avatar}
+                alt="Merchant avatar"
+                width={AVATAR_SIZE}
+                height={AVATAR_SIZE}
+                unoptimized
+                className="h-full w-full object-cover"
+              />
             ) : (
               <span className="text-xs text-gray-400">No avatar</span>
             )}
@@ -120,7 +134,11 @@ export default function SettingsPage() {
               disabled={isProcessing}
               className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
             >
-              {isProcessing ? 'Processing…' : avatar ? 'Change avatar' : 'Upload avatar'}
+              {isProcessing
+                ? 'Processing…'
+                : avatar
+                  ? 'Change avatar'
+                  : 'Upload avatar'}
             </button>
           </div>
         </div>
