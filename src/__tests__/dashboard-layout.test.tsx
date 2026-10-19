@@ -88,6 +88,7 @@ describe('DashboardLayout — auth guards and hydration', () => {
     vi.clearAllMocks();
     mockPathname = '/dashboard';
     vi.useFakeTimers();
+    mockPathname.mockReturnValue('/dashboard');
   });
 
   afterEach(() => {
@@ -222,6 +223,8 @@ describe('AdminLayout — admin authorization guard', () => {
     // guard must see an admin pathname for its authorization decision.
     mockPathname = '/dashboard/admin/settlements';
     vi.useFakeTimers();
+    // Restore default path for each test; individual tests may override.
+    mockPathname.mockReturnValue('/dashboard/admin');
   });
 
   afterEach(() => {
@@ -245,6 +248,10 @@ describe('AdminLayout — admin authorization guard', () => {
   });
 
   it('[non-admin merchant] renders an explicit loading state — no blank flash — then redirects to /dashboard', async () => {
+    // Simulate a non-admin merchant navigating directly to an admin route.
+    // The pathname must be an admin path so useAdminGuard marks the merchant
+    // unauthorized for this route (#357).
+    mockPathname.mockReturnValue('/dashboard/admin/settlements');
     stubAuth({ token: 'valid-token', merchant: MOCK_MERCHANT });
 
     const { container } = render(

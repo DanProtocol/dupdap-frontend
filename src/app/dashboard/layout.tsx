@@ -21,14 +21,11 @@ import { isAdmin } from '@/lib/auth';
 import { isNavItemActive } from '@/lib/nav-active';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import WhatsNewBanner from '@/components/WhatsNewBanner';
+import { OfflineBanner } from '@/components/OfflineBanner';
+import { NotificationCenter } from '@/components/NotificationCenter';
 import { useAdminGuard, useAdminRedirect } from '@/lib/useAdminGuard';
 import { useFocusTrap } from '@/lib/useFocusTrap';
-import { useAdminGuard, useAdminRedirect } from '@/lib/useAdminGuard';
-import { OfflineBanner } from '@/components/OfflineBanner';
 import { cn } from '@/lib/utils';
-import { useAdminGuard, useAdminRedirect } from '@/lib/useAdminGuard';
-import { cn } from '@/lib/utils';
-import { NotificationCenter } from '@/components/NotificationCenter';
 
 declare global {
   interface Window {
@@ -99,6 +96,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Must be called unconditionally (Rules of Hooks) even for non-admin paths;
   // useAdminGuard returns 'authorized' for all non-admin paths (#357).
   const adminStatus = useAdminGuard();
+  useAdminRedirect(adminStatus);
   const tutorialRef = useFocusTrap<HTMLDivElement>(tutorialOpen);
 
   // Admin authorization guard — returns 'loading' | 'authorized' | 'unauthorized'.
