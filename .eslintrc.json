@@ -2,6 +2,7 @@
   "extends": "next/core-web-vitals",
   "plugins": ["import"],
   "rules": {
+    "jsx-a11y/anchor-has-content": "error",
     "no-console": "warn",
     "@typescript-eslint/no-explicit-any": "error",
     "import/order": [

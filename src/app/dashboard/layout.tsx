@@ -14,6 +14,7 @@ import {
   Menu,
   X,
   Shield,
+  PlayCircle,
 } from 'lucide-react';
 import { useAuthStore } from '@/lib/store';
 import { isAdmin } from '@/lib/auth';
@@ -45,6 +46,20 @@ const navItems = [
   { href: '/dashboard/admin/settlements', label: 'Admin Settlements', icon: Shield, adminOnly: true },
 ];
 
+// Merchant onboarding walkthrough (#582). The video covers registration
+// through first payment; the transcript keeps it accessible.
+const ONBOARDING_VIDEO_URL = 'https://www.youtube.com/playlist?list=PLdupdup-onboarding';
+const ONBOARDING_VIDEO_EMBED_URL =
+  'https://www.youtube.com/embed/videoseries?list=PLdupdup-onboarding';
+const ONBOARDING_TRANSCRIPT = [
+  'Welcome to DupDub. In this walkthrough we take you from registration to your first payment.',
+  'Step 1: Create your merchant account and verify your business details.',
+  'Step 2: Connect your settlement bank account in Settings.',
+  'Step 3: Create an API key and configure your webhook endpoint.',
+  'Step 4: Send a test payment from the Payments page and confirm it appears in your dashboard.',
+  'That is it — you are ready to accept live payments.',
+];
+
 function LoadingState() {
   return (
     <div
@@ -66,6 +81,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const pathname = usePathname();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [tutorialOpen, setTutorialOpen] = useState(false);
+
   // The admin authorization gate is shared with the admin layout so the
   // decision is made during render, not only by a redirect effect (#357).
   const adminStatus = useAdminGuard();
@@ -74,6 +91,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // focus-trap so focus moves into the drawer on open, Tab cycles inside it,
   // and focus returns to the hamburger button on close (#356).
   const drawerRef = useFocusTrap<HTMLElement>(mobileNavOpen);
+  const tutorialRef = useFocusTrap<HTMLDivElement>(tutorialOpen);
 
   useEffect(() => {
     if (!token) {
@@ -98,6 +116,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [mobileNavOpen]);
+
+  // Escape closes the tutorial modal.
+  useEffect(() => {
+    if (!tutorialOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setTutorialOpen(false);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [tutorialOpen]);
 
   // Prevent the page behind the drawer from scrolling while it is open.
   useEffect(() => {
@@ -190,7 +221,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         })}
       </nav>
 
-      <div className="p-4 border-t border-gray-100 dark:border-gray-800">
+      <div className="p-4 border-t border-gray-100 dark:border-gray-800 space-y-2">
+        <button
+          onClick={() => setTutorialOpen(true)}
+          className="flex items-center gap-3 px-3 py-2 text-sm text-brand-600 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300 w-full rounded-lg hover:bg-brand-50 dark:hover:bg-brand-950 transition-colors"
+        >
+          <PlayCircle className="w-4 h-4" />
+          Watch onboarding tutorial
+        </button>
         <button
           onClick={() => {
             if (!confirmNavigation()) return;
@@ -242,6 +280,70 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           >
             {sidebarContent}
           </aside>
+        </div>
+      )}
+
+      {/* Onboarding tutorial modal (#582) */}
+      {tutorialOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setTutorialOpen(false)}
+            aria-hidden="true"
+          />
+          <div
+            ref={tutorialRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="onboarding-tutorial-title"
+            className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl bg-white dark:bg-gray-900 shadow-xl"
+          >
+            <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800">
+              <h2
+                id="onboarding-tutorial-title"
+                className="text-lg font-semibold text-gray-900 dark:text-gray-100"
+              >
+                Merchant onboarding tutorial
+              </h2>
+              <button
+                onClick={() => setTutorialOpen(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                aria-label="Close tutorial"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 space-y-4">
+              <div className="aspect-video w-full overflow-hidden rounded-lg bg-black">
+                <iframe
+                  src={ONBOARDING_VIDEO_EMBED_URL}
+                  title="Merchant onboarding video tutorial"
+                  className="w-full h-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+              <a
+                href={ONBOARDING_VIDEO_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-sm font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300"
+              >
+                <PlayCircle className="w-4 h-4" />
+                Open the full playlist on YouTube
+              </a>
+              <details className="rounded-lg border border-gray-200 dark:border-gray-800 p-3">
+                <summary className="cursor-pointer text-sm font-medium text-gray-900 dark:text-gray-100">
+                  Video transcript
+                </summary>
+                <ol className="mt-2 list-decimal list-inside space-y-1 text-sm text-gray-600 dark:text-gray-400">
+                  {ONBOARDING_TRANSCRIPT.map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ol>
+              </details>
+            </div>
+          </div>
         </div>
       )}
 
