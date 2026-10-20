@@ -26,7 +26,7 @@ import {
 } from '@/lib/utils';
 import { FormField } from '@/components/FormField';
 import Modal from '@/components/Modal';
-import { SkeletonList } from '@/components/Skeleton';
+import { SkeletonList, SkeletonTableRows } from '@/components/Skeleton';
 import { getErrorMessage } from '@/lib/errors';
 import type { Payment } from '@/lib/types';
 
@@ -231,7 +231,6 @@ export default function PaymentsPage() {
   useEffect(() => {
     load(page);
   }, [page]);
-
   // Client-side search filter — matches reference (case-insensitive) or
   // amountUsd. The API paginates server-side, so this filters within the
   // current page's results. This lets merchants quickly locate a specific
@@ -648,14 +647,24 @@ export default function PaymentsPage() {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {loading ? (
+                <SkeletonTableRows rows={6} cols={PAYMENT_TABLE_COLUMNS} />
+              ) : error ? null : payments.length === 0 ? (
                 <tr>
                   <td
                     colSpan={PAYMENT_TABLE_COLUMNS}
                     className="px-6 py-8 text-center text-gray-400"
                   >
-                    Loading...
+                    No payments yet
                   </td>
                 </tr>
+              ) : (
+                payments.map((p) => (
+                <tr>
+                  <td
+                    colSpan={PAYMENT_TABLE_COLUMNS}
+                    className="px-6 py-8 text-center text-gray-400"
+                  >
+                <SkeletonTableRows rows={6} cols={PAYMENT_TABLE_COLUMNS} />
               ) : error ? null : filteredPayments.length === 0 ? (
                 <tr>
                   <td
