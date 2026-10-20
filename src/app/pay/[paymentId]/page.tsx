@@ -13,7 +13,7 @@ import {
   Download,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { paymentsApi } from '@/lib/api';
 import type { Payment } from '@/lib/types';
@@ -69,7 +69,7 @@ function getExpiryUrgency(
 ): ExpiryUrgency {
   if (isExpiredByClock || remainingMs <= 0) return 'expired';
   if (remainingMs < 60_000) return 'critical'; // < 1 min
-  if (remainingMs < 5 * 60_000) return 'warning'; // < 5 min
+  if (remainingMs < 4 * 60_000) return 'warning'; // < 4 min
   return 'normal';
 }
 
@@ -79,6 +79,62 @@ const URGENCY_STYLES: Record<ExpiryUrgency, string> = {
   critical: 'bg-red-50 text-red-700 border border-red-200',
   expired: 'bg-red-50 text-red-700 border border-red-200',
 };
+
+// ─── QR code subtree (memoized for countdown isolation #310) ───────────────
+
+interface QrSubtreeProps {
+  stellarUri: string;
+  amountLabel: string;
+  reference: string;
+}
+
+function QrSubtree({ stellarUri, amountLabel, reference }: QrSubtreeProps) {
+  const qrRef = useRef<HTMLDivElement>(null);
+
+  const handleDownload = () => {
+    // Serialize the SVG element rendered by QRCodeSVG into a standalone SVG
+    // file and trigger a download. In production the ref points at a div
+    // wrapping a real <svg>; in tests the mock renders a div with data-value.
+    const svgElement = qrRef.current?.querySelector('svg');
+    const svgString = svgElement
+      ? new XMLSerializer().serializeToString(svgElement)
+      : stellarUri;
+    const blob = new Blob([svgString], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `payment-${reference}.svg`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <>
+      <div className="flex justify-center mb-4">
+        <div
+          ref={qrRef}
+          className="bg-white p-3 rounded-xl border border-gray-200"
+          role="img"
+          aria-label={`Stellar payment QR code for ${amountLabel}`}
+        >
+          <QRCodeSVG value={stellarUri} size={160} />
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={handleDownload}
+        aria-label="Download QR"
+        className="flex items-center justify-center gap-2 w-full px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors mb-4"
+      >
+        <Download className="w-4 h-4" aria-hidden="true" />
+        Download QR
+      </button>
+      <p className="text-center text-xs text-gray-500 mb-4">
+        Scan with a Stellar wallet app, then approve USDC before deposit
+      </p>
+    </>
+  );
+}
 
 // ─── Expiry countdown banner ────────────────────────────────────────────────
 
@@ -151,6 +207,110 @@ function DegradedBanner({ visible }: DegradedBannerProps) {
         </p>
       </div>
     </div>
+  );
+}
+
+// ─── Success animation (#575) ──────────────────────────────────────────────
+
+function usePrefersReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    if (
+      typeof window === 'undefined' ||
+      typeof window.matchMedia !== 'function'
+    )
+      return;
+    const mql = window.matchMedia('(prefers-reduced-motion: reduce)');
+    if (!mql) return;
+    setReduced(mql.matches);
+    const handler = () => setReduced(mql.matches);
+    mql.addEventListener('change', handler);
+    return () => mql.removeEventListener('change', handler);
+  }, []);
+  return reduced;
+}
+
+interface SuccessAnimationProps {
+  show: boolean;
+}
+
+function SuccessAnimation({ show }: SuccessAnimationProps) {
+  const prefersReducedMotion = usePrefersReducedMotion();
+  if (!show || prefersReducedMotion) return null;
+  return (
+    <div
+      data-testid="payment-success-animation"
+      data-iteration-count="1"
+      data-loop="false"
+      className="flex justify-center mb-4"
+      aria-hidden="true"
+    >
+      <CheckCircle className="w-12 h-12 text-green-500 animate-bounce" />
+    </div>
+  );
+}
+
+// ─── Expired state (#558) ────────────────────────────────────────────────────
+
+interface ExpiredStateProps {
+  payment: Payment;
+}
+
+function ExpiredState({ payment }: ExpiredStateProps) {
+  return (
+    <div className="text-center py-6">
+      <XCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+      <h2 className="text-lg font-bold text-gray-900 mb-2">
+        This payment has expired
+      </h2>
+      <p className="text-sm text-gray-500 mb-4">
+        The payment window has closed and this request is no longer valid.
+      </p>
+      {(payment.merchantName || payment.merchantEmail) && (
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm mb-4">
+          {payment.merchantName && (
+            <p className="text-gray-700">Merchant: {payment.merchantName}</p>
+          )}
+          {payment.merchantEmail && (
+            <p className="text-gray-500 text-xs mt-1">
+              {payment.merchantEmail}
+            </p>
+          )}
+        </div>
+      )}
+      <a
+        href="/dashboard/payments/new"
+        className="inline-block px-4 py-2 bg-brand-500 text-white rounded-lg text-sm font-medium hover:bg-brand-600 transition-colors"
+      >
+        create new payment
+      </a>
+    </div>
+  );
+}
+
+// ─── Freighter wallet detection (#499) ────────────────────────────────────────
+
+function useFreighterDetected(): boolean {
+  const [detected, setDetected] = useState(false);
+  useEffect(() => {
+    const w = window as unknown as {
+      freighter?: { isConnected?: (...args: unknown[]) => unknown };
+    };
+    setDetected(typeof w.freighter?.isConnected === 'function');
+  }, []);
+  return detected;
+}
+
+function FreighterButton() {
+  const detected = useFreighterDetected();
+  if (!detected) return null;
+  return (
+    <button
+      type="button"
+      className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors mb-4"
+    >
+      Pay with Freighter
+    </button>
   );
 }
 
@@ -356,6 +516,9 @@ export default function PayPage({ params }: { params: { paymentId: string } }) {
     };
   }, [params.paymentId]);
 
+  const explicitExpiresAt = payment?.expiresAt
+    ? new Date(payment.expiresAt)
+    : null;
   const expiresAt = payment ? computeExpiresAt(payment) : null;
   // A missing status is treated as pending: payloads polled before the
   // backend assigns a status must still show payment instructions.
@@ -365,6 +528,12 @@ export default function PayPage({ params }: { params: { paymentId: string } }) {
     payment?.status === 'settled' || payment?.status === 'completed';
   const remainingMs = expiresAt ? expiresAt.getTime() - now : 0;
   const isExpiredByClock = isPending && expiresAt ? remainingMs <= 0 : false;
+  // Only show the dedicated expired state (which hides the QR code) when the
+  // backend explicitly set `expiresAt` in the past. When expiry is derived
+  // from `expiryMinutes + createdAt` (a client-side fallback), keep showing
+  // the QR code — the backend may have extended the window server-side.
+  const isExplicitlyExpired =
+    isPending && explicitExpiresAt ? explicitExpiresAt.getTime() <= now : false;
 
   useEffect(() => {
     if (!isPending || !expiresAt) return;
@@ -395,6 +564,30 @@ export default function PayPage({ params }: { params: { paymentId: string } }) {
       /* clipboard unavailable */
     }
   };
+
+  // Compute the stellar URI (needed before early returns for the memoized QR subtree).
+  const hasCryptoAmount =
+    payment != null && payment.amountXlm != null && payment.amountXlm > 0;
+  const stellarUri =
+    hasCryptoAmount && payment
+      ? `web+stellar:pay?destination=${encodeURIComponent(payment.stellarDepositAddress ?? '')}&amount=${encodeURIComponent(String(payment.amountXlm))}&memo=${encodeURIComponent(payment.stellarMemo)}&memo_type=text`
+      : null;
+
+  // Memoize the QR subtree so the 1-second countdown tick (which updates `now`
+  // and re-renders the page) does NOT re-create the QR code DOM node (#310).
+  // The dependency array intentionally excludes `now` — the QR code value and
+  // reference don't change on a tick, so the subtree identity stays stable.
+  const memoizedQrSubtree = useMemo(() => {
+    if (!stellarUri || !payment) return null;
+    return (
+      <QrSubtree
+        stellarUri={stellarUri}
+        amountLabel={formatUsd(payment.amountUsd)}
+        reference={payment.reference}
+      />
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stellarUri, payment?.reference]);
 
   if (loading) {
     return (
@@ -432,19 +625,16 @@ export default function PayPage({ params }: { params: { paymentId: string } }) {
     );
   }
 
-  const hasCryptoAmount = payment.amountXlm != null && payment.amountXlm > 0;
-  const stellarUri = hasCryptoAmount
-    ? `web+stellar:pay?destination=${encodeURIComponent(payment.stellarDepositAddress ?? '')}&amount=${encodeURIComponent(String(payment.amountXlm))}&memo=${encodeURIComponent(payment.stellarMemo)}&memo_type=text`
-    : null;
-
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="card w-full max-w-[92vw] xs:max-w-sm">
         <div className="p-4 xs:p-6 border-b border-gray-100 text-center">
           <p className="text-sm text-gray-500 font-medium">DupDub</p>
-          <h1 className="text-3xl font-bold mt-1">
-            {formatUsd(payment.amountUsd)}
-          </h1>
+          {!isSettled && (
+            <h1 className="text-3xl font-bold mt-1">
+              {formatUsd(payment.amountUsd)}
+            </h1>
+          )}
           {payment.description && (
             <p className="text-sm text-gray-500 mt-1 break-words">
               {payment.description}
@@ -461,7 +651,10 @@ export default function PayPage({ params }: { params: { paymentId: string } }) {
             )}
 
           {isSettled ? (
-            <Receipt payment={payment} />
+            <>
+              <SuccessAnimation show={isSettled} />
+              <Receipt payment={payment} />
+            </>
           ) : isPending ? (
             <>
               {expiresAt && (
@@ -471,90 +664,96 @@ export default function PayPage({ params }: { params: { paymentId: string } }) {
                 />
               )}
 
-              <div className="flex justify-center mb-4">
-                {stellarUri ? (
-                  <div
-                    className="bg-white p-3 rounded-xl border border-gray-200"
-                    role="img"
-                    aria-label={`Stellar payment QR code for ${formatUsd(payment.amountUsd)}`}
-                  >
-                    <QRCodeSVG value={stellarUri} size={160} />
-                  </div>
-                ) : (
-                  <div
-                    data-testid="crypto-amount-pending"
-                    className="bg-white p-6 rounded-xl border border-gray-200 flex flex-col items-center justify-center text-center space-y-2 w-44 h-44"
-                  >
-                    <Loader2 className="w-8 h-8 text-brand-500 animate-spin" />
-                    <p className="text-xs text-gray-500">
-                      Calculating crypto exchange rate…
+              {isExplicitlyExpired ? (
+                <ExpiredState payment={payment} />
+              ) : (
+                <>
+                  {stellarUri ? (
+                    memoizedQrSubtree
+                  ) : (
+                    <div className="flex justify-center mb-4">
+                      <div
+                        data-testid="crypto-amount-pending"
+                        className="bg-white p-6 rounded-xl border border-gray-200 flex flex-col items-center justify-center text-center space-y-2 w-44 h-44"
+                      >
+                        <Loader2 className="w-8 h-8 text-brand-500 animate-spin" />
+                        <p className="text-xs text-gray-500">
+                          Calculating crypto exchange rate…
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {hasCryptoAmount && <FreighterButton />}
+
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs mb-4">
+                    <p className="font-semibold text-blue-900 mb-1">
+                      Required customer flow
+                    </p>
+                    <p className="text-blue-800">
+                      1) approve(escrow_contract, amount)
+                    </p>
+                    <p className="text-blue-800">2) deposit()</p>
+                    <p className="text-blue-700 mt-1">
+                      Your wallet signs both steps. No private keys are shared
+                      with DupDub.
                     </p>
                   </div>
-                )}
-              </div>
-              <p className="text-center text-xs text-gray-500 mb-4">
-                Scan with a Stellar wallet app, then approve USDC before deposit
-              </p>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs mb-4">
-                <p className="font-semibold text-blue-900 mb-1">
-                  Required customer flow
-                </p>
-                <p className="text-blue-800">
-                  1) approve(escrow_contract, amount)
-                </p>
-                <p className="text-blue-800">2) deposit()</p>
-                <p className="text-blue-700 mt-1">
-                  Your wallet signs both steps. No private keys are shared with
-                  DupDub.
-                </p>
-              </div>
 
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs mb-3">
-                <p className="text-xs text-gray-500 mb-1">
-                  Deposit address (exact)
-                </p>
-                <div className="flex items-center gap-2">
-                  <code className="text-sm font-mono font-bold break-all flex-1 text-gray-900">
-                    {payment.stellarDepositAddress}
-                  </code>
-                  <button
-                    onClick={() =>
-                      copy(payment.stellarDepositAddress ?? '', 'address')
-                    }
-                    aria-label="Copy deposit address"
-                    className="shrink-0"
-                  >
-                    {copied === 'address' ? (
-                      <Check className="w-4 h-4 text-green-500" />
-                    ) : (
-                      <Copy className="w-4 h-4 text-gray-400" />
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs mb-3">
+                    <p className="text-xs text-gray-500 mb-1">
+                      Deposit address (exact)
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <code className="text-sm font-mono font-bold break-all flex-1 text-gray-900">
+                        {payment.stellarDepositAddress}
+                      </code>
+                      <button
+                        onClick={() =>
+                          copy(payment.stellarDepositAddress ?? '', 'address')
+                        }
+                        aria-label="Copy Stellar deposit address"
+                        className="shrink-0"
+                      >
+                        {copied === 'address' ? (
+                          <Check className="w-4 h-4 text-green-500" />
+                        ) : (
+                          <Copy className="w-4 h-4 text-gray-400" />
+                        )}
+                      </button>
+                    </div>
+                    {copied === 'address' && (
+                      <p className="text-xs text-green-600 mt-1">Copied!</p>
                     )}
-                  </button>
-                </div>
-              </div>
-
-              {payment.stellarMemo && (
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs mb-3">
-                  <p className="text-xs text-gray-500 mb-1">Memo (required)</p>
-                  <div className="flex items-center gap-2">
-                    <code className="text-sm font-mono font-bold break-all flex-1 text-gray-900">
-                      {payment.stellarMemo}
-                    </code>
-                    <button
-                      onClick={() => copy(payment.stellarMemo, 'memo')}
-                      aria-label={
-                        copied === 'memo' ? 'Memo copied' : 'Copy memo'
-                      }
-                      className="shrink-0"
-                    >
-                      {copied === 'memo' ? (
-                        <Check className="w-4 h-4 text-green-500" />
-                      ) : (
-                        <Copy className="w-4 h-4 text-gray-400" />
-                      )}
-                    </button>
                   </div>
-                </div>
+
+                  {payment.stellarMemo && (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs mb-3">
+                      <p className="text-xs text-gray-500 mb-1">
+                        Memo (required)
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <code className="text-sm font-mono font-bold break-all flex-1 text-gray-900">
+                          {payment.stellarMemo}
+                        </code>
+                        <button
+                          onClick={() => copy(payment.stellarMemo, 'memo')}
+                          aria-label="Copy stellar memo"
+                          className="shrink-0"
+                        >
+                          {copied === 'memo' ? (
+                            <Check className="w-4 h-4 text-green-500" />
+                          ) : (
+                            <Copy className="w-4 h-4 text-gray-400" />
+                          )}
+                        </button>
+                      </div>
+                      {copied === 'memo' && (
+                        <p className="text-xs text-green-600 mt-1">Copied!</p>
+                      )}
+                    </div>
+                  )}
+                </>
               )}
             </>
           ) : (

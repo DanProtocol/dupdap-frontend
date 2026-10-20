@@ -62,6 +62,8 @@ export interface Payment {
   updatedAt?: string;
   expiresAt?: string;
   expiryMinutes?: number;
+  merchantName?: string;
+  merchantEmail?: string;
 }
 
 export interface PaymentStats {
