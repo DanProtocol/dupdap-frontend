@@ -7,6 +7,7 @@
 This is the Next.js app merchants use to manage payments and settlements, and the page customers land on to pay a merchant with USDC on Stellar. It talks exclusively to the [`dupdap-backend`](../dupdap-backend) REST API — there is no direct on-chain write path from the frontend itself beyond what the customer's wallet signs.
 
 Related repos:
+
 - [`dupdap-backend`](../dupdap-backend) — the API this app calls (`NEXT_PUBLIC_API_URL`)
 - [`dupdapp_stellar`](../dupdapp_stellar) — the Soroban contracts (`payment_escrow`, etc.) that the customer payment flow ultimately settles into
 
@@ -98,7 +99,7 @@ Rule of thumb: if the data comes from the API, it's `useQuery`; if it must survi
   - a request interceptor that attaches `Authorization: Bearer <token>` from the Zustand auth store (single source of truth)
   - a response interceptor that calls `logout()` on the auth store and redirects to `/auth/login` on `401`
   - grouped API helpers (`authApi`, `paymentsApi`, …) rather than ad-hoc fetches scattered through components
-- **`src/lib/store.ts`** — Zustand + `persist` for auth state (`token`, `merchant`), persisted to `localStorage` under the `dupdub-auth` key. This is the only global client state; everything else (payment lists, analytics, etc.) is fetched per-page through `api.ts`.
+- **`src/lib/store.ts`** — Zustand + `persist` for auth state (`merchant`), persisted to `localStorage` under the `dupdub-auth` key. Sensitive tokens are not stored in localStorage; session tokens reside exclusively in httpOnly cookies. This is the only global client state; everything else (payment lists, analytics, etc.) is fetched per-page through `api.ts`.
 
 ### `src/lib` overview
 
@@ -111,7 +112,13 @@ Rule of thumb: if the data comes from the API, it's `useQuery`; if it must survi
 
 ### Auth token security
 
-The access token is persisted in `localStorage` via Zustand. Any XSS vector can read it synchronously. Mitigations in this repo:
+Authentication tokens are issued by the backend via `Set-Cookie: access_token=...; HttpOnly; Secure; SameSite=Strict`. Storing JWT access tokens in `localStorage` or `sessionStorage` was removed (#484) to eliminate the risk of client-side token exfiltration via DOM-based XSS attacks.
 
-- **Single storage key** — the Axios client reads from `useAuthStore`, not a duplicate `access_token` key, so 401 logout and UI auth state stay in sync.
-- **CSP headers** — `next.config.js` sets a restrictive Content-Security-Policy (plus `X-Frame-Options`, `Referrer-Policy`) to reduce XSS blast
+Mitigations and architecture in this repo:
+
+- **httpOnly Cookies** — The browser stores and protects the session token in an `httpOnly`, `Secure` cookie. JavaScript execution cannot access or exfiltrate the token under any circumstances.
+- **Strict CSRF Boundaries** — Cookies are scoped with `SameSite=Strict`, preventing unauthorized cross-site request forgery attacks.
+- **Axios `withCredentials`** — The Axios client instance in `src/lib/api.ts` is configured with `withCredentials: true`, ensuring cookies are automatically sent with all authenticated API requests without manual `Authorization: Bearer` header manipulation.
+- **No Token in Client Storage** — Zustand auth store (`src/lib/store.ts`) only persists the merchant profile for UI state, completely omitting tokens from `localStorage` / `sessionStorage`. Legacy `access_token` keys are removed automatically.
+- **Secure Logout** — Logging out dispatches `POST /auth/logout` via `authApi.logout()`, instructing the server to clear and expire the session cookie, while resetting client-side auth state and cache.
+- **CSP headers** — `next.config.js` sets a restrictive Content-Security-Policy (plus `X-Frame-Options`, `Referrer-Policy`) to reduce XSS blast radius.

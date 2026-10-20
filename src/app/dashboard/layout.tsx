@@ -17,6 +17,7 @@ import {
   PlayCircle,
 } from 'lucide-react';
 import { useAuthStore } from '@/lib/store';
+import { authApi } from '@/lib/api';
 import { isAdmin } from '@/lib/auth';
 import { isNavItemActive } from '@/lib/nav-active';
 import { cn } from '@/lib/utils';
@@ -165,11 +166,11 @@ export default function DashboardLayout({
 
   useEffect(() => {
     if (!hasHydrated) return;
-    if (!token) {
+    if (!token && !merchant) {
       const next = pathname ? `?next=${encodeURIComponent(pathname)}` : '';
       router.replace(`/auth/login${next}`);
     }
-  }, [hasHydrated, token, router, pathname]);
+  }, [hasHydrated, token, merchant, router, pathname]);
 
   useEffect(() => {
     setMobileNavOpen(false);
@@ -233,7 +234,7 @@ export default function DashboardLayout({
   // Render an explicit loading state (instead of null) while the redirect
   // effect above navigates unauthenticated users away, avoiding a flash of
   // blank content.
-  if (!token || !merchant) {
+  if (!merchant || adminStatus !== 'authorized') {
     return <LoadingState />;
   }
 
@@ -303,7 +304,12 @@ export default function DashboardLayout({
         </button>
         <button
           type="button"
-          onClick={() => {
+          onClick={async () => {
+            try {
+              await authApi.logout();
+            } catch {
+              // ignore network error on logout
+            }
             logout();
             router.replace('/auth/login');
           }}

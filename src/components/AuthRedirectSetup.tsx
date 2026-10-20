@@ -19,6 +19,7 @@ export function AuthRedirectSetup() {
   const router = useRouter();
   const pathname = usePathname();
   const token = useAuthStore((s) => s.token);
+  const merchant = useAuthStore((s) => s.merchant);
   const hasHydrated = useAuthStore((s) => s.hasHydrated);
 
   // Track whether this component has mounted on the client. We cannot rely on
@@ -37,7 +38,7 @@ export function AuthRedirectSetup() {
     // ready would redirect users who actually have a valid stored token.
     if (!mounted || !hasHydrated) return;
 
-    const isAuthenticated = Boolean(token);
+    const isAuthenticated = Boolean(merchant || token);
     if (isAuthenticated) return;
     if (pathname.startsWith('/auth/login')) return;
 

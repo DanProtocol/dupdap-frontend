@@ -16,20 +16,22 @@ describe('useAuthStore', () => {
   });
 
   describe('setAuth()', () => {
-    it('updates the token in the store', () => {
+    it('sets the merchant in the store and keeps token null', () => {
       useAuthStore.getState().setAuth('my-token', testMerchant);
-      expect(useAuthStore.getState().token).toBe('my-token');
-    });
-
-    it('updates the merchant in the store', () => {
-      useAuthStore.getState().setAuth('my-token', testMerchant);
+      expect(useAuthStore.getState().token).toBeNull();
       expect(useAuthStore.getState().merchant).toEqual(testMerchant);
     });
 
-    it('persists the token to localStorage under the dupdub-auth key', () => {
+    it('supports setAuth with only a merchant object', () => {
+      useAuthStore.getState().setAuth(testMerchant);
+      expect(useAuthStore.getState().merchant).toEqual(testMerchant);
+      expect(useAuthStore.getState().token).toBeNull();
+    });
+
+    it('does NOT persist the token to localStorage under the dupdub-auth key (#484)', () => {
       useAuthStore.getState().setAuth('persisted-token', testMerchant);
       const stored = JSON.parse(localStorage.getItem('dupdub-auth') ?? '{}');
-      expect(stored.state.token).toBe('persisted-token');
+      expect(stored.state.token).toBeUndefined();
     });
 
     it('persists the merchant to localStorage under the dupdub-auth key', () => {
@@ -58,11 +60,11 @@ describe('useAuthStore', () => {
       expect(useAuthStore.getState().merchant).toBeNull();
     });
 
-    it('persists the cleared state to localStorage', () => {
+    it('persists the cleared state to localStorage without token', () => {
       useAuthStore.getState().setAuth('token', testMerchant);
       useAuthStore.getState().logout();
       const stored = JSON.parse(localStorage.getItem('dupdub-auth') ?? '{}');
-      expect(stored.state.token).toBeNull();
+      expect(stored.state.token).toBeUndefined();
       expect(stored.state.merchant).toBeNull();
     });
 
@@ -74,28 +76,38 @@ describe('useAuthStore', () => {
   });
 
   describe('persist middleware', () => {
-    it('persists only token and merchant and does not serialize hasHydrated', () => {
+    it('persists only merchant and does not serialize token or hasHydrated (#484)', () => {
       useAuthStore.getState().setAuth('survive-token', testMerchant);
       const stored = JSON.parse(localStorage.getItem('dupdub-auth') ?? '{}');
-      expect(stored.state.token).toBe('survive-token');
+      expect(stored.state.token).toBeUndefined();
       expect(stored.state.merchant).toEqual(testMerchant);
       expect(stored.state.hasHydrated).toBeUndefined();
     });
 
-    it('sets hasHydrated to true upon rehydration from storage', async () => {
-      useAuthStore.setState({ hasHydrated: false, token: null, merchant: null });
+    it('sets hasHydrated to true and nullifies token upon rehydration from storage', async () => {
+      useAuthStore.setState({
+        hasHydrated: false,
+        token: null,
+        merchant: null,
+      });
       localStorage.setItem(
         'dupdub-auth',
-        JSON.stringify({ state: { token: 'persisted-token', merchant: testMerchant } }),
+        JSON.stringify({
+          state: { token: 'persisted-token', merchant: testMerchant },
+        })
       );
       await useAuthStore.persist.rehydrate();
       expect(useAuthStore.getState().hasHydrated).toBe(true);
-      expect(useAuthStore.getState().token).toBe('persisted-token');
+      expect(useAuthStore.getState().token).toBeNull();
       expect(useAuthStore.getState().merchant).toEqual(testMerchant);
     });
 
     it('sets hasHydrated to true even when storage is empty', async () => {
-      useAuthStore.setState({ hasHydrated: false, token: null, merchant: null });
+      useAuthStore.setState({
+        hasHydrated: false,
+        token: null,
+        merchant: null,
+      });
       localStorage.clear();
       await useAuthStore.persist.rehydrate();
       expect(useAuthStore.getState().hasHydrated).toBe(true);

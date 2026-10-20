@@ -16,6 +16,7 @@ import type {
 
 const api = axios.create({
   baseURL: getApiUrl(),
+  withCredentials: true,
 });
 
 /** Extra config field used to bound reconnect retries for one request. */
@@ -73,8 +74,8 @@ function waitForOnline(): Promise<void> {
 }
 
 api.interceptors.request.use((config) => {
-  const token = useAuthStore.getState().token;
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  // Session authentication is handled natively via httpOnly cookies with withCredentials: true.
+  // Manual Authorization header injection is omitted to prevent token exposure via XSS (#484).
   return config;
 });
 
@@ -140,6 +141,7 @@ export const authApi = {
   }) => api.post<AuthResponse>('/auth/register', data),
   login: (data: { email: string; password: string }) =>
     api.post<AuthResponse>('/auth/login', data),
+  logout: () => api.post('/auth/logout'),
   forgotPassword: (data: { email: string }) =>
     api.post('/auth/forgot-password', data),
   resetPassword: (data: { token: string; password: string }) =>
