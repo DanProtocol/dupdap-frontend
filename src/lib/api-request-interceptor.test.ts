@@ -1,5 +1,6 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import axios from 'axios';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { useAuthStore } from './store';
 
 vi.mock('axios', () => {
@@ -22,13 +23,18 @@ vi.mock('axios', () => {
 });
 
 describe('Axios request interceptor', () => {
-  let requestInterceptor: ((config: { headers: Record<string, string> }) => { headers: Record<string, string> }) | undefined;
+  let requestInterceptor:
+    | ((config: { headers: Record<string, string> }) => {
+        headers: Record<string, string>;
+      })
+    | undefined;
 
   beforeAll(async () => {
     await import('./api');
 
     const instance = vi.mocked(axios.create).mock.results[0]?.value;
-    requestInterceptor = vi.mocked(instance.interceptors.request.use).mock.calls[0]?.[0];
+    requestInterceptor = vi.mocked(instance.interceptors.request.use).mock
+      .calls[0]?.[0];
   });
 
   beforeEach(() => {

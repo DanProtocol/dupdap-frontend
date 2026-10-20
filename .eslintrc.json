@@ -1,6 +1,6 @@
 {
   "extends": "next/core-web-vitals",
-  "plugins": ["import"],
+  "plugins": ["import", "@typescript-eslint"],
   "rules": {
     "jsx-a11y/anchor-has-content": "error",
     "no-console": "warn",
@@ -38,7 +38,12 @@
       "parser": "@typescript-eslint/parser"
     },
     {
-      "files": ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"],
+      "files": [
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/*.spec.ts",
+        "**/*.spec.tsx"
+      ],
       "rules": {
         "no-console": "off",
         "@typescript-eslint/no-explicit-any": "off"

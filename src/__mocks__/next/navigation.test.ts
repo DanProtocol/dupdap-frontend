@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import navigationDefault, { useRouter, usePathname, useSearchParams, redirect } from './navigation';
+
+import navigationDefault, {
+  useRouter,
+  usePathname,
+  useSearchParams,
+  redirect,
+} from './navigation';
 
 describe('next/navigation mock', () => {
   it('exports expected router and routing mock functions', () => {

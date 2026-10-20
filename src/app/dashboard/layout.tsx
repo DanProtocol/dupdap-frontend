@@ -1,8 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
   CreditCard,
@@ -16,19 +13,23 @@ import {
   Shield,
   PlayCircle,
 } from 'lucide-react';
-import { useAuthStore } from '@/lib/store';
-import { isAdmin } from '@/lib/auth';
-import { isNavItemActive } from '@/lib/nav-active';
-import { cn } from '@/lib/utils';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+
+import { HelpWidget } from '@/components/HelpWidget';
+import { LocaleSwitcher } from '@/components/LocaleSwitcher';
+import { NotificationCenter } from '@/components/NotificationCenter';
+import { OfflineBanner } from '@/components/OfflineBanner';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import WhatsNewBanner from '@/components/WhatsNewBanner';
-import { OfflineBanner } from '@/components/OfflineBanner';
-import { NotificationCenter } from '@/components/NotificationCenter';
+import { isAdmin } from '@/lib/auth';
+import { useLocale } from '@/lib/locale';
+import { isNavItemActive } from '@/lib/nav-active';
+import { useAuthStore } from '@/lib/store';
 import { useAdminGuard, useAdminRedirect } from '@/lib/useAdminGuard';
 import { useFocusTrap } from '@/lib/useFocusTrap';
-import { useLocale } from '@/lib/locale';
-import { LocaleSwitcher } from '@/components/LocaleSwitcher';
-import { HelpWidget } from '@/components/HelpWidget';
+import { cn } from '@/lib/utils';
 
 declare global {
   interface Window {
@@ -167,7 +168,9 @@ export default function DashboardLayout({
     if (!hasHydrated) return;
     if (!token) {
       const next = pathname ? `?next=${encodeURIComponent(pathname)}` : '';
-      router.replace(`/auth/login${next}`);
+      // push (not replace) keeps the dashboard entry in history so a back
+      // navigation lands on the page the user came from (#490).
+      router.push(`/auth/login${next}`);
     }
   }, [hasHydrated, token, router, pathname]);
 

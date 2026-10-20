@@ -1,5 +1,9 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import axios from 'axios';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+
+// Bound mock reference: imported at module scope so assertions work even when
+// the test itself never re-imports the mocked module.
+import { redirectToLogin } from './auth-redirect';
 import { useAuthStore } from './store';
 
 vi.mock('axios', () => {
@@ -28,39 +32,46 @@ vi.mock('./auth-redirect', () => ({
       (typeof window !== 'undefined'
         ? `${window.location.pathname}${window.location.search}`
         : undefined);
-    const path = rawPath && rawPath.startsWith('/') && !rawPath.startsWith('//')
-      ? rawPath
-      : undefined;
-    window.location.assign(`/auth/login${path ? `?next=${encodeURIComponent(path)}` : ''}`);
+    const path =
+      rawPath && rawPath.startsWith('/') && !rawPath.startsWith('//')
+        ? rawPath
+        : undefined;
+    window.location.assign(
+      `/auth/login${path ? `?next=${encodeURIComponent(path)}` : ''}`
+    );
   }),
   setAuthRedirectHandler: vi.fn(),
 }));
-
-// Bound mock reference: imported at module scope so assertions work even when
-// the test itself never re-imports the mocked module.
-import { redirectToLogin } from './auth-redirect';
 
 vi.mock('./env', () => ({
   getApiUrl: vi.fn(() => 'http://localhost:3000/api/v1'),
 }));
 
 describe('Axios 401 response interceptor', () => {
-  let responseErrorHandler: ((err: { response?: { status: number } }) => Promise<never>) | undefined;
+  let responseErrorHandler:
+    ((err: { response?: { status: number } }) => Promise<never>) | undefined;
 
   beforeAll(async () => {
     process.env.NEXT_PUBLIC_API_URL = 'http://localhost:3000/api/v1';
-    (globalThis as unknown as { getApiUrl: () => string }).getApiUrl = () => 'http://localhost:3000/api/v1';
+    (globalThis as unknown as { getApiUrl: () => string }).getApiUrl = () =>
+      'http://localhost:3000/api/v1';
     await import('./api');
 
     const instance = vi.mocked(axios.create).mock.results[0]?.value;
-    responseErrorHandler = vi.mocked(instance.interceptors.response.use).mock.calls[0]?.[1];
+    responseErrorHandler = vi.mocked(instance.interceptors.response.use).mock
+      .calls[0]?.[1];
   });
 
   beforeEach(() => {
     localStorage.clear();
     useAuthStore.setState({
       token: 'some-token',
-      merchant: { id: '1', email: 'a@b.com', businessName: 'Acme', status: 'active' },
+      merchant: {
+        id: '1',
+        email: 'a@b.com',
+        businessName: 'Acme',
+        status: 'active',
+      },
     });
 
     // Mock window.location
@@ -185,7 +196,7 @@ describe('Axios 401 response interceptor', () => {
     // The current path is preserved as ?next= so the user returns here after
     // signing in. Navigation itself goes through `location.assign`.
     expect(window.location.assign).toHaveBeenCalledWith(
-      `/auth/login?next=${encodeURIComponent('/dashboard')}`,
+      `/auth/login?next=${encodeURIComponent('/dashboard')}`
     );
   });
 });

@@ -1,6 +1,7 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { isAdmin } from './auth';
 import axios from 'axios';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { isAdmin } from './auth';
 import { useAuthStore } from './store';
 
 vi.mock('./env', () => ({
@@ -32,15 +33,22 @@ vi.mock('axios', () => {
 });
 
 describe('auth token single source of truth', () => {
-  let requestInterceptor: ((config: { headers: Record<string, string> }) => { headers: Record<string, string> }) | undefined;
-  let responseInterceptor: ((err: { response?: { status: number } }) => Promise<never>) | undefined;
+  let requestInterceptor:
+    | ((config: { headers: Record<string, string> }) => {
+        headers: Record<string, string>;
+      })
+    | undefined;
+  let responseInterceptor:
+    ((err: { response?: { status: number } }) => Promise<never>) | undefined;
 
   beforeAll(async () => {
     await import('./api');
 
     const instance = vi.mocked(axios.create).mock.results[0]?.value;
-    requestInterceptor = vi.mocked(instance.interceptors.request.use).mock.calls[0]?.[0];
-    responseInterceptor = vi.mocked(instance.interceptors.response.use).mock.calls[0]?.[1];
+    requestInterceptor = vi.mocked(instance.interceptors.request.use).mock
+      .calls[0]?.[0];
+    responseInterceptor = vi.mocked(instance.interceptors.response.use).mock
+      .calls[0]?.[1];
   });
 
   beforeEach(() => {
@@ -58,14 +66,21 @@ describe('auth token single source of truth', () => {
 
     expect(localStorage.getItem('access_token')).toBeNull();
     expect(useAuthStore.getState().token).toBe('test-token');
-    expect(JSON.parse(localStorage.getItem('dupdub-auth') ?? '{}').state.token).toBe('test-token');
+    expect(
+      JSON.parse(localStorage.getItem('dupdub-auth') ?? '{}').state.token
+    ).toBe('test-token');
   });
 
   it('clears legacy access_token key on logout', () => {
     localStorage.setItem('access_token', 'stale-token');
     useAuthStore.setState({
       token: 'live-token',
-      merchant: { id: '1', email: 'a@b.com', businessName: 'Acme', status: 'active' },
+      merchant: {
+        id: '1',
+        email: 'a@b.com',
+        businessName: 'Acme',
+        status: 'active',
+      },
     });
 
     useAuthStore.getState().logout();
@@ -95,7 +110,12 @@ describe('auth token single source of truth', () => {
   it('calls store logout on 401 responses instead of touching a legacy key', async () => {
     useAuthStore.setState({
       token: 'expired-token',
-      merchant: { id: '1', email: 'a@b.com', businessName: 'Acme', status: 'active' },
+      merchant: {
+        id: '1',
+        email: 'a@b.com',
+        businessName: 'Acme',
+        status: 'active',
+      },
     });
     localStorage.setItem('access_token', 'legacy-should-not-matter');
 
@@ -104,7 +124,9 @@ describe('auth token single source of truth', () => {
       writable: true,
     });
 
-    await expect(responseInterceptor?.({ response: { status: 401 } })).rejects.toEqual({
+    await expect(
+      responseInterceptor?.({ response: { status: 401 } })
+    ).rejects.toEqual({
       response: { status: 401 },
     });
 
@@ -116,25 +138,48 @@ describe('auth token single source of truth', () => {
 describe('isAdmin', () => {
   it('returns true when merchant role is "admin"', () => {
     expect(
-      isAdmin({ id: '1', email: 'a@b.com', businessName: 'Acme', status: 'active', role: 'admin' }),
+      isAdmin({
+        id: '1',
+        email: 'a@b.com',
+        businessName: 'Acme',
+        status: 'active',
+        role: 'admin',
+      })
     ).toBe(true);
   });
 
   it('returns true when merchant role is "staff"', () => {
     expect(
-      isAdmin({ id: '1', email: 'a@b.com', businessName: 'Acme', status: 'active', role: 'staff' }),
+      isAdmin({
+        id: '1',
+        email: 'a@b.com',
+        businessName: 'Acme',
+        status: 'active',
+        role: 'staff',
+      })
     ).toBe(true);
   });
 
   it('returns false when merchant role is "merchant"', () => {
     expect(
-      isAdmin({ id: '1', email: 'a@b.com', businessName: 'Acme', status: 'active', role: 'merchant' }),
+      isAdmin({
+        id: '1',
+        email: 'a@b.com',
+        businessName: 'Acme',
+        status: 'active',
+        role: 'merchant',
+      })
     ).toBe(false);
   });
 
   it('returns false when merchant role is undefined', () => {
     expect(
-      isAdmin({ id: '1', email: 'a@b.com', businessName: 'Acme', status: 'active' }),
+      isAdmin({
+        id: '1',
+        email: 'a@b.com',
+        businessName: 'Acme',
+        status: 'active',
+      })
     ).toBe(false);
   });
 

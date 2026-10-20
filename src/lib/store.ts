@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+
 import type { Merchant } from './types';
 
 interface AuthState {
@@ -56,6 +57,6 @@ export const useAuthStore = create<AuthState>()(
           useAuthStore.getState()._setHasHydrated(true);
         }
       },
-    },
-  ),
+    }
+  )
 );

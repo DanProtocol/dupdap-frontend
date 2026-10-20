@@ -1,5 +1,7 @@
 import { describe, expect, it, beforeEach } from 'vitest';
+
 import { useAuthStore, clearLegacyAccessTokenKey } from './store';
+
 import type { Merchant } from './types';
 
 const testMerchant: Merchant = {
@@ -83,10 +85,16 @@ describe('useAuthStore', () => {
     });
 
     it('sets hasHydrated to true upon rehydration from storage', async () => {
-      useAuthStore.setState({ hasHydrated: false, token: null, merchant: null });
+      useAuthStore.setState({
+        hasHydrated: false,
+        token: null,
+        merchant: null,
+      });
       localStorage.setItem(
         'dupdub-auth',
-        JSON.stringify({ state: { token: 'persisted-token', merchant: testMerchant } }),
+        JSON.stringify({
+          state: { token: 'persisted-token', merchant: testMerchant },
+        })
       );
       await useAuthStore.persist.rehydrate();
       expect(useAuthStore.getState().hasHydrated).toBe(true);
@@ -95,7 +103,11 @@ describe('useAuthStore', () => {
     });
 
     it('sets hasHydrated to true even when storage is empty', async () => {
-      useAuthStore.setState({ hasHydrated: false, token: null, merchant: null });
+      useAuthStore.setState({
+        hasHydrated: false,
+        token: null,
+        merchant: null,
+      });
       localStorage.clear();
       await useAuthStore.persist.rehydrate();
       expect(useAuthStore.getState().hasHydrated).toBe(true);
