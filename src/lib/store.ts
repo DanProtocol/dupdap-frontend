@@ -15,7 +15,7 @@ interface AuthState {
 
 const LEGACY_TOKEN_KEY = 'access_token';
 
-/** Remove the legacy duplicate key written before #143 unified auth storage. */
+/** Remove any legacy access_token key written to localStorage (#484). */
 export function clearLegacyAccessTokenKey() {
   if (typeof window !== 'undefined') {
     localStorage.removeItem(LEGACY_TOKEN_KEY);
@@ -56,11 +56,12 @@ export const useAuthStore = create<AuthState>()(
         // spinner. `state` is undefined when there is no persisted data yet
         // (first-ever visit), so fall back to the store's own setter.
         if (state) {
+          state.token = null;
           state._setHasHydrated(true);
         } else {
           useAuthStore.getState()._setHasHydrated(true);
         }
       },
-    },
-  ),
+    }
+  )
 );

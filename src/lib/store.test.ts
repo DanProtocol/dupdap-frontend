@@ -19,6 +19,7 @@ describe('useAuthStore', () => {
     it('updates the merchant in the store', () => {
       useAuthStore.getState().setAuth(testMerchant);
       expect(useAuthStore.getState().merchant).toEqual(testMerchant);
+      expect(useAuthStore.getState().token).toBeNull();
     });
 
     it('persists the merchant to localStorage under the dupdub-auth key', () => {

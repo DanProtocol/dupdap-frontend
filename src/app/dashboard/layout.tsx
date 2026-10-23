@@ -17,6 +17,7 @@ import {
   PlayCircle,
 } from 'lucide-react';
 import { useAuthStore } from '@/lib/store';
+import { authApi } from '@/lib/api';
 import { isAdmin } from '@/lib/auth';
 import { isNavItemActive } from '@/lib/nav-active';
 import { cn } from '@/lib/utils';

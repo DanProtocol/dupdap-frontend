@@ -7,6 +7,7 @@
 This is the Next.js app merchants use to manage payments and settlements, and the page customers land on to pay a merchant with USDC on Stellar. It talks exclusively to the [`dupdap-backend`](../dupdap-backend) REST API — there is no direct on-chain write path from the frontend itself beyond what the customer's wallet signs.
 
 Related repos:
+
 - [`dupdap-backend`](../dupdap-backend) — the API this app calls (`NEXT_PUBLIC_API_URL`)
 - [`dupdapp_stellar`](../dupdapp_stellar) — the Soroban contracts (`payment_escrow`, etc.) that the customer payment flow ultimately settles into
 
@@ -98,7 +99,7 @@ Rule of thumb: if the data comes from the API, it's `useQuery`; if it must survi
   - a request interceptor that attaches `Authorization: Bearer <token>` from the Zustand auth store (single source of truth)
   - a response interceptor that calls `logout()` on the auth store and redirects to `/auth/login` on `401`
   - grouped API helpers (`authApi`, `paymentsApi`, …) rather than ad-hoc fetches scattered through components
-- **`src/lib/store.ts`** — Zustand + `persist` for auth state (`token`, `merchant`), persisted to `localStorage` under the `dupdub-auth` key. This is the only global client state; everything else (payment lists, analytics, etc.) is fetched per-page through `api.ts`.
+- **`src/lib/store.ts`** — Zustand + `persist` for auth state (`merchant`), persisted to `localStorage` under the `dupdub-auth` key. Sensitive tokens are not stored in localStorage; session tokens reside exclusively in httpOnly cookies. This is the only global client state; everything else (payment lists, analytics, etc.) is fetched per-page through `api.ts`.
 
 ### `src/lib` overview
 

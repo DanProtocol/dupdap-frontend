@@ -137,6 +137,7 @@ export const authApi = {
   }) => api.post<AuthResponse>('/auth/register', data),
   login: (data: { email: string; password: string }) =>
     api.post<AuthResponse>('/auth/login', data),
+  logout: () => api.post('/auth/logout'),
   forgotPassword: (data: { email: string }) =>
     api.post('/auth/forgot-password', data),
   resetPassword: (data: { token: string; password: string }) =>
