@@ -23,7 +23,7 @@ export interface Merchant {
 }
 
 export interface AuthResponse {
-  accessToken: string;
+  accessToken?: string;
   merchant: Merchant;
 }
 
