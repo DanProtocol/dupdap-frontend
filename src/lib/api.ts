@@ -73,11 +73,7 @@ function waitForOnline(): Promise<void> {
   });
 }
 
-api.interceptors.request.use((config) => {
-  // Session authentication is handled natively via httpOnly cookies with withCredentials: true.
-  // Manual Authorization header injection is omitted to prevent token exposure via XSS (#484).
-  return config;
-});
+// Request interceptor omitted: auth token is sent automatically via httpOnly cookie (withCredentials: true).
 
 api.interceptors.response.use(
   (res) => res,
@@ -146,6 +142,7 @@ export const authApi = {
     api.post('/auth/forgot-password', data),
   resetPassword: (data: { token: string; password: string }) =>
     api.post('/auth/reset-password', data),
+  logout: () => api.post('/auth/logout'),
 };
 
 export const paymentsApi = {

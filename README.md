@@ -112,13 +112,10 @@ Rule of thumb: if the data comes from the API, it's `useQuery`; if it must survi
 
 ### Auth token security
 
-Authentication tokens are issued by the backend via `Set-Cookie: access_token=...; HttpOnly; Secure; SameSite=Strict`. Storing JWT access tokens in `localStorage` or `sessionStorage` was removed (#484) to eliminate the risk of client-side token exfiltration via DOM-based XSS attacks.
+To protect against XSS token theft (where scripts running in the browser could steal tokens stored in `localStorage`), session credentials are managed via secure `httpOnly` cookies:
 
-Mitigations and architecture in this repo:
-
-- **httpOnly Cookies** — The browser stores and protects the session token in an `httpOnly`, `Secure` cookie. JavaScript execution cannot access or exfiltrate the token under any circumstances.
-- **Strict CSRF Boundaries** — Cookies are scoped with `SameSite=Strict`, preventing unauthorized cross-site request forgery attacks.
-- **Axios `withCredentials`** — The Axios client instance in `src/lib/api.ts` is configured with `withCredentials: true`, ensuring cookies are automatically sent with all authenticated API requests without manual `Authorization: Bearer` header manipulation.
-- **No Token in Client Storage** — Zustand auth store (`src/lib/store.ts`) only persists the merchant profile for UI state, completely omitting tokens from `localStorage` / `sessionStorage`. Legacy `access_token` keys are removed automatically.
-- **Secure Logout** — Logging out dispatches `POST /auth/logout` via `authApi.logout()`, instructing the server to clear and expire the session cookie, while resetting client-side auth state and cache.
-- **CSP headers** — `next.config.js` sets a restrictive Content-Security-Policy (plus `X-Frame-Options`, `Referrer-Policy`) to reduce XSS blast radius.
+- **HttpOnly Cookies** — The backend issues the JWT access token via `Set-Cookie: access_token=...; HttpOnly; Secure; SameSite=Strict`. JavaScript cannot read or write `HttpOnly` cookies, preventing XSS-based session hijacking.
+- **Automatic Credentials** — Axios is configured with `withCredentials: true`, so the browser automatically attaches the cookie to API requests. Manual `Authorization` headers are omitted.
+- **Session Termination** — Logging out triggers `POST /auth/logout`, instructing the backend to clear the cookie.
+- **State Management** — Zustand stores only non-sensitive merchant profile metadata (ID, business name, status) for UI rendering.
+- **CSP Headers** — `next.config.js` sets a restrictive Content-Security-Policy (plus `X-Frame-Options`, `Referrer-Policy`) to further reduce XSS blast radius.

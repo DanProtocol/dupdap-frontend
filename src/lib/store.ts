@@ -1,17 +1,15 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Merchant } from './types';
+import { authApi } from './api';
 
 interface AuthState {
   token: string | null;
   merchant: Merchant | null;
   /** True once Zustand's persist middleware has finished rehydrating from localStorage. */
   hasHydrated: boolean;
-  setAuth: (
-    tokenOrMerchant: string | Merchant,
-    maybeMerchant?: Merchant
-  ) => void;
-  logout: () => void;
+  setAuth: (merchant: Merchant) => void;
+  logout: () => Promise<void>;
   _setHasHydrated: (value: boolean) => void;
 }
 
@@ -25,12 +23,8 @@ export function clearLegacyAccessTokenKey() {
 }
 
 /**
- * Auth state is maintained in-memory and merchant profile is persisted via
- * Zustand (`dupdub-auth` key).
- *
- * SECURITY (#484): The JWT access token is stored in an httpOnly, Secure,
- * SameSite=Strict cookie managed by the browser and server. Tokens are NEVER
- * stored in localStorage or sessionStorage to protect against XSS token exfiltration.
+ * Auth token is stored in an httpOnly cookie managed by the backend.
+ * The frontend only persists the merchant object in localStorage.
  */
 export const useAuthStore = create<AuthState>()(
   persist(
@@ -38,24 +32,23 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       merchant: null,
       hasHydrated: false,
-      setAuth: (tokenOrMerchant, maybeMerchant) => {
+      setAuth: (merchant) => {
         clearLegacyAccessTokenKey();
-        const merchant =
-          typeof tokenOrMerchant === 'string'
-            ? (maybeMerchant ?? null)
-            : tokenOrMerchant;
-        // Tokens are never stored in client state or localStorage (#484)
-        set({ token: null, merchant });
+        set({ merchant });
       },
-      logout: () => {
+      logout: async () => {
         clearLegacyAccessTokenKey();
+        try {
+          await authApi.logout();
+        } catch {
+          // Ignore errors; we still clear local state
+        }
         set({ token: null, merchant: null });
       },
       _setHasHydrated: (value) => set({ hasHydrated: value }),
     }),
     {
       name: 'dupdub-auth',
-      // Persist only merchant profile; never serialize tokens to localStorage (#484)
       partialize: (state) => ({ merchant: state.merchant }),
       onRehydrateStorage: () => (state) => {
         clearLegacyAccessTokenKey();
