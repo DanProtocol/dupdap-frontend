@@ -128,7 +128,7 @@ describe('LoginPage', () => {
     await fillAndSubmit();
 
     await waitFor(() => {
-      expect(mockSetAuth).toHaveBeenCalledWith('tok123', merchant);
+      expect(mockSetAuth).toHaveBeenCalledWith(merchant);
     });
   });
 

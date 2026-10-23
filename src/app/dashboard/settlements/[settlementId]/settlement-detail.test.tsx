@@ -8,11 +8,12 @@
  * of silently falling back to the neutral gray badge.
  */
 
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 
 import { STATUS_COLORS } from '@/lib/utils';
-
+import { useParams } from 'next/navigation';
 import SettlementDetailPage from './page';
 
 /* ── Mocks ──────────────────────────────────────────────────────────────── */
@@ -24,6 +25,8 @@ vi.mock('@/lib/api', () => ({
     get: (...args: unknown[]) => mockGet(...args),
   },
 }));
+
+vi.mock('next/navigation');
 
 vi.mock('next/link', () => ({
   default: ({
@@ -43,6 +46,10 @@ vi.mock('next/link', () => ({
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+});
+
+beforeEach(() => {
+  vi.mocked(useParams).mockReturnValue({ settlementId: 'stl_1234567890' });
 });
 
 /** Builds a settlement payload with the given status. */
@@ -69,9 +76,7 @@ describe('SettlementDetailPage — status badge colors (#342)', () => {
   ])('renders the shared STATUS_COLORS styling for "%s"', async (status) => {
     mockGet.mockResolvedValue({ data: settlementWithStatus(status) });
 
-    render(
-      <SettlementDetailPage params={{ settlementId: 'stl_1234567890' }} />
-    );
+    render(<SettlementDetailPage />);
 
     const badge = await screen.findByText(status);
     // Split the expected classes: one is the pill's own layout, the shared map
@@ -86,9 +91,7 @@ describe('SettlementDetailPage — status badge colors (#342)', () => {
       data: settlementWithStatus('pending_approval'),
     });
 
-    render(
-      <SettlementDetailPage params={{ settlementId: 'stl_1234567890' }} />
-    );
+    render(<SettlementDetailPage />);
 
     const badge = await screen.findByText('pending_approval');
     expect(badge.className).toContain('bg-orange-100');
@@ -100,9 +103,7 @@ describe('SettlementDetailPage — status badge colors (#342)', () => {
       data: settlementWithStatus('some_new_status'),
     });
 
-    render(
-      <SettlementDetailPage params={{ settlementId: 'stl_1234567890' }} />
-    );
+    render(<SettlementDetailPage />);
 
     const badge = await screen.findByText('some_new_status');
     expect(badge.className).toContain('bg-gray-100');

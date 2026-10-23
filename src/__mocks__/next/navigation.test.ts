@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-
 import navigationDefault, {
   useRouter,
   usePathname,
   useSearchParams,
+  useParams,
   redirect,
 } from './navigation';
 
@@ -12,6 +12,7 @@ describe('next/navigation mock', () => {
     expect(typeof useRouter).toBe('function');
     expect(typeof usePathname).toBe('function');
     expect(typeof useSearchParams).toBe('function');
+    expect(typeof useParams).toBe('function');
     expect(typeof redirect).toBe('function');
 
     const router = useRouter();
@@ -22,10 +23,12 @@ describe('next/navigation mock', () => {
 
     expect(usePathname()).toBe('/dashboard');
     expect(useSearchParams()).toBeInstanceOf(URLSearchParams);
+    expect(useParams()).toEqual({});
 
     expect(navigationDefault.useRouter).toBe(useRouter);
     expect(navigationDefault.usePathname).toBe(usePathname);
     expect(navigationDefault.useSearchParams).toBe(useSearchParams);
+    expect(navigationDefault.useParams).toBe(useParams);
     expect(navigationDefault.redirect).toBe(redirect);
   });
 });

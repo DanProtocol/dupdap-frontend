@@ -56,7 +56,7 @@ describe('auth token single source of truth', () => {
     useAuthStore.setState({ token: null, merchant: null });
   });
 
-  it('does not write a separate access_token localStorage key on setAuth', () => {
+  it('does not write token to localStorage on setAuth (#484)', () => {
     useAuthStore.getState().setAuth('test-token', {
       id: '1',
       email: 'a@b.com',
@@ -65,10 +65,18 @@ describe('auth token single source of truth', () => {
     });
 
     expect(localStorage.getItem('access_token')).toBeNull();
-    expect(useAuthStore.getState().token).toBe('test-token');
+    expect(useAuthStore.getState().token).toBeNull();
     expect(
       JSON.parse(localStorage.getItem('dupdub-auth') ?? '{}').state.token
-    ).toBe('test-token');
+    ).toBeUndefined();
+    expect(
+      JSON.parse(localStorage.getItem('dupdub-auth') ?? '{}').state.merchant
+    ).toEqual({
+      id: '1',
+      email: 'a@b.com',
+      businessName: 'Acme',
+      status: 'active',
+    });
   });
 
   it('clears legacy access_token key on logout', () => {
@@ -89,22 +97,21 @@ describe('auth token single source of truth', () => {
     expect(useAuthStore.getState().token).toBeNull();
   });
 
-  it('reads the bearer token from the auth store in the request interceptor', () => {
+  it('omits manual Authorization header in request interceptor for httpOnly cookies (#484)', () => {
     useAuthStore.setState({ token: 'store-token', merchant: null });
 
     const config = { headers: {} as Record<string, string> };
     const result = requestInterceptor?.(config);
 
-    expect(result?.headers.Authorization).toBe('Bearer store-token');
+    expect(result?.headers.Authorization).toBeUndefined();
   });
 
-  it('omits Authorization when the auth store has no token', () => {
-    useAuthStore.setState({ token: null, merchant: null });
+  it('provides authApi.logout that dispatches POST /auth/logout (#484)', async () => {
+    const { authApi } = await import('./api');
+    const instance = vi.mocked(axios.create).mock.results[0]?.value;
 
-    const config = { headers: {} as Record<string, string> };
-    const result = requestInterceptor?.(config);
-
-    expect(result?.headers.Authorization).toBeUndefined();
+    authApi.logout();
+    expect(instance.post).toHaveBeenCalledWith('/auth/logout');
   });
 
   it('calls store logout on 401 responses instead of touching a legacy key', async () => {

@@ -1,7 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-
+import toast from '@/lib/toast';
+import { getErrorMessage } from '@/lib/errors';
+import {
+  bankAccountsApi,
+  maskAccountNumber,
+  type BankAccount,
+} from '@/lib/bank-accounts-api';
+import { FormField } from '@/components/FormField';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import { FormField } from '@/components/FormField';
 import {
@@ -36,7 +43,12 @@ export default function BankAccountsSection() {
   }, []);
 
   const set =
-    (key: keyof typeof EMPTY) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    (key: keyof typeof EMPTY) =>
+    (
+      e: React.ChangeEvent<
+        HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+      >
+    ) =>
       setForm((f) => ({ ...f, [key]: e.target.value }));
 
   const add = async (e: React.FormEvent) => {

@@ -19,6 +19,7 @@ import type {
 
 const api = axios.create({
   baseURL: getApiUrl(),
+  withCredentials: true,
 });
 
 /** Extra config field used to bound reconnect retries for one request. */
@@ -75,11 +76,7 @@ function waitForOnline(): Promise<void> {
   });
 }
 
-api.interceptors.request.use((config) => {
-  const token = useAuthStore.getState().token;
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
+// Request interceptor omitted: auth token is sent automatically via httpOnly cookie (withCredentials: true).
 
 api.interceptors.response.use(
   (res) => res,
@@ -143,10 +140,12 @@ export const authApi = {
   }) => api.post<AuthResponse>('/auth/register', data),
   login: (data: { email: string; password: string }) =>
     api.post<AuthResponse>('/auth/login', data),
+  logout: () => api.post('/auth/logout'),
   forgotPassword: (data: { email: string }) =>
     api.post('/auth/forgot-password', data),
   resetPassword: (data: { token: string; password: string }) =>
     api.post('/auth/reset-password', data),
+  logout: () => api.post('/auth/logout'),
 };
 
 export const paymentsApi = {

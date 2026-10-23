@@ -120,7 +120,7 @@ describe('LandingNav — mobile menu interaction', () => {
 
     const mobileLinks = screen.getAllByRole('link', { name: /login/i });
     // mobile link is inside landing-mobile-menu
-    const mobileLoginLink = mobileLinks.find((link) =>
+    const mobileLoginLink = mobileLinks.find((link: HTMLElement) =>
       mobileMenu?.contains(link)
     );
     expect(mobileLoginLink).toBeDefined();
@@ -139,7 +139,7 @@ describe('LandingNav — mobile menu interaction', () => {
     expect(mobileMenu).toBeInTheDocument();
 
     const mobileLinks = screen.getAllByRole('link', { name: /get started/i });
-    const mobileGetStartedLink = mobileLinks.find((link) =>
+    const mobileGetStartedLink = mobileLinks.find((link: HTMLElement) =>
       mobileMenu?.contains(link)
     );
     expect(mobileGetStartedLink).toBeDefined();

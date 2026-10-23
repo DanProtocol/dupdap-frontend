@@ -9,7 +9,16 @@ import {
   Info,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-
+import {
+  Bell,
+  CheckCheck,
+  X,
+  Banknote,
+  AlertTriangle,
+  Info,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useFocusTrap } from '@/lib/useFocusTrap';
 import { settlementsApi } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { useFocusTrap } from '@/lib/useFocusTrap';

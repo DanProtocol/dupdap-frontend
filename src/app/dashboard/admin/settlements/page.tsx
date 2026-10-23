@@ -37,7 +37,7 @@ function formatAmount(value: number | undefined) {
 }
 
 export default function AdminSettlementsPage() {
-  const { token } = useAuthStore();
+  const { token, merchant } = useAuthStore();
   const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,12 +46,13 @@ export default function AdminSettlementsPage() {
   const [submittingId, setSubmittingId] = useState<string | null>(null);
 
   const loadSettlements = useCallback(async () => {
-    if (!token) return;
+    if (!token && !merchant) return;
     setLoading(true);
     setError(null);
     try {
       const res = await fetch(`${API_URL}/admin/settlements?status=pending`, {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!res.ok) throw new Error('Failed to load settlements');
       const data = await res.json();
@@ -63,20 +64,21 @@ export default function AdminSettlementsPage() {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, merchant]);
 
   useEffect(() => {
     loadSettlements();
   }, [loadSettlements]);
 
   const approve = async (id: string) => {
-    if (!token) return;
+    if (!token && !merchant) return;
     setSubmittingId(id);
     setError(null);
     try {
       const res = await fetch(`${API_URL}/admin/settlements/${id}/approve`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!res.ok) throw new Error('Failed to approve settlement');
       await loadSettlements();
@@ -90,7 +92,7 @@ export default function AdminSettlementsPage() {
   };
 
   const reject = async (id: string) => {
-    if (!token) return;
+    if (!token && !merchant) return;
     if (!rejectReason.trim()) {
       setError('A rejection reason is required');
       return;
@@ -100,8 +102,9 @@ export default function AdminSettlementsPage() {
     try {
       const res = await fetch(`${API_URL}/admin/settlements/${id}/reject`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
-          Authorization: `Bearer ${token}`,
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ reason: rejectReason.trim() }),

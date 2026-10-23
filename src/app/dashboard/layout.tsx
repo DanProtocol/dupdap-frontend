@@ -13,14 +13,11 @@ import {
   Shield,
   PlayCircle,
 } from 'lucide-react';
-import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-
-import { HelpWidget } from '@/components/HelpWidget';
-import { LocaleSwitcher } from '@/components/LocaleSwitcher';
-import { NotificationCenter } from '@/components/NotificationCenter';
-import { OfflineBanner } from '@/components/OfflineBanner';
+import { useAuthStore } from '@/lib/store';
+import { authApi } from '@/lib/api';
+import { isAdmin } from '@/lib/auth';
+import { isNavItemActive } from '@/lib/nav-active';
+import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import WhatsNewBanner from '@/components/WhatsNewBanner';
 import { isAdmin } from '@/lib/auth';
@@ -118,7 +115,7 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { merchant, token, logout, hasHydrated } = useAuthStore();
+  const { merchant, logout, hasHydrated } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -166,13 +163,13 @@ export default function DashboardLayout({
 
   useEffect(() => {
     if (!hasHydrated) return;
-    if (!token) {
+    if (!merchant) {
       const next = pathname ? `?next=${encodeURIComponent(pathname)}` : '';
       // push (not replace) keeps the dashboard entry in history so a back
       // navigation lands on the page the user came from (#490).
       router.push(`/auth/login${next}`);
     }
-  }, [hasHydrated, token, router, pathname]);
+  }, [hasHydrated, merchant, router, pathname]);
 
   useEffect(() => {
     setMobileNavOpen(false);
@@ -236,7 +233,7 @@ export default function DashboardLayout({
   // Render an explicit loading state (instead of null) while the redirect
   // effect above navigates unauthenticated users away, avoiding a flash of
   // blank content.
-  if (!token || !merchant) {
+  if (!merchant) {
     return <LoadingState />;
   }
 
@@ -306,8 +303,8 @@ export default function DashboardLayout({
         </button>
         <button
           type="button"
-          onClick={() => {
-            logout();
+          onClick={async () => {
+            await logout();
             router.replace('/auth/login');
           }}
           className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"

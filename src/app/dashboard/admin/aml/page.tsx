@@ -28,7 +28,7 @@ const statusStyles: Record<AmlStatus, string> = {
 };
 
 export default function AdminAmlPage() {
-  const { token } = useAuthStore();
+  const { token, merchant } = useAuthStore();
   const [flags, setFlags] = useState<AmlFlag[]>([]);
   const [statusFilter, setStatusFilter] = useState<AmlStatus | 'ALL'>('OPEN');
   const [loading, setLoading] = useState(true);
@@ -36,12 +36,13 @@ export default function AdminAmlPage() {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   const loadFlags = useCallback(async () => {
-    if (!token) return;
+    if (!token && !merchant) return;
     setLoading(true);
     setError(null);
     try {
       const res = await fetch(`${API_URL}/admin/aml/flags`, {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!res.ok) throw new Error('Failed to load AML flags');
       const data = await res.json();
@@ -51,20 +52,21 @@ export default function AdminAmlPage() {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, merchant]);
 
   useEffect(() => {
     loadFlags();
   }, [loadFlags]);
 
   const markReviewed = async (id: string) => {
-    if (!token) return;
+    if (!token && !merchant) return;
     setUpdatingId(id);
     try {
       const res = await fetch(`${API_URL}/admin/aml/flags/${id}/review`, {
         method: 'PATCH',
+        credentials: 'include',
         headers: {
-          Authorization: `Bearer ${token}`,
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ status: 'RESOLVED' }),

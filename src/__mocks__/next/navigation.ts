@@ -11,9 +11,7 @@ export const useRouter = vi.fn(() => ({
 
 export const usePathname = vi.fn(() => '/dashboard');
 export const useSearchParams = vi.fn(() => new URLSearchParams());
+export const useParams = vi.fn(() => ({}));
 export const redirect = vi.fn();
 
-/** Default export mirrors Next.js' navigation module shape for mocks. */
-const navigationMock = { useRouter, usePathname, useSearchParams, redirect };
-
-export default navigationMock;
+export default { useRouter, usePathname, useSearchParams, useParams, redirect };

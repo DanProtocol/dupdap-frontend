@@ -32,7 +32,7 @@ export interface TopMerchant {
 }
 
 export interface AuthResponse {
-  accessToken: string;
+  accessToken?: string;
   merchant: Merchant;
 }
 
@@ -55,6 +55,8 @@ export interface Payment {
   status: PaymentStatus;
   description?: string;
   customerEmail?: string;
+  /** Arbitrary merchant-defined key/value data (e.g. order ID, product name). */
+  metadata?: Record<string, unknown>;
   stellarMemo: string;
   stellarDepositAddress?: string;
   qrCode?: string;

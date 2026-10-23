@@ -31,11 +31,11 @@ import { useAuthStore } from '@/lib/store';
 
 const mockPush = vi.fn();
 const mockReplace = vi.fn();
-let mockPathname = '/dashboard';
+const mockPathname = vi.fn(() => '/dashboard');
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush, replace: mockReplace }),
-  usePathname: () => mockPathname,
+  usePathname: () => mockPathname(),
 }));
 
 vi.mock('next/link', () => ({
@@ -93,7 +93,6 @@ function stubAuth(overrides: {
 describe('DashboardLayout — auth guards and hydration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockPathname = '/dashboard';
     vi.useFakeTimers();
   });
 
@@ -235,7 +234,6 @@ describe('AdminLayout — admin authorization guard', () => {
     vi.clearAllMocks();
     // The admin layout only ever mounts under the admin route tree, so the
     // guard must see an admin pathname for its authorization decision.
-    mockPathname = '/dashboard/admin/settlements';
     vi.useFakeTimers();
     // Individual tests may override via mockPathname assignment.
   });
