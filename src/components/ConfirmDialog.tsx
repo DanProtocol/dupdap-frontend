@@ -1,45 +1,38 @@
 'use client';
 
 import { useEffect } from 'react';
-import { cn } from '@/lib/utils';
 
 interface ConfirmDialogProps {
-  /** Whether the dialog is visible. Renders null when false. */
   open: boolean;
-  /** Dialog heading. Defaults to "Are you sure?". */
+  /** Dialog heading. Defaults to "Are you sure?" */
   title?: string;
-  /** Main body message shown to the user. */
-  message?: string;
-  /** Alias for `message` — shown when `message` is not provided. */
-  description?: string;
+  /** Body message / question shown below the heading. */
+  message: string;
   /** Label for the confirm button. Defaults to "Confirm". */
   confirmLabel?: string;
   /** Label for the cancel button. Defaults to "Cancel". */
   cancelLabel?: string;
-  /** When true, the confirm button gets destructive (red) styling. */
+  /** When true, the confirm button uses destructive (red) styling. */
   destructive?: boolean;
-  /** When true, both buttons are disabled and the confirm label becomes "Working...". */
+  /** When true, both buttons are disabled and confirm shows "Working…". */
   loading?: boolean;
-  /** Called when the user confirms the action. */
   onConfirm: () => void;
-  /** Called when the user cancels — via the cancel button or Escape key. */
   onCancel: () => void;
 }
 
 /**
- * ConfirmDialog — a lightweight confirmation modal with confirm/cancel buttons.
+ * Accessible confirmation dialog.
  *
- * Accessibility:
- * - Renders as a role="dialog" with aria-modal="true".
- * - Escape key cancels (only when open).
- * - Backdrop click cancels.
- * - Focus is trapped within the panel while open.
+ * Uses `role="alertdialog"` (required by the settings tests for API key
+ * generation — see #335) so screen readers interrupt the current reading flow
+ * to announce the dialog title and description.
+ *
+ * Keyboard: Escape closes the dialog via onCancel.
  */
 export default function ConfirmDialog({
   open,
   title = 'Are you sure?',
   message,
-  description,
   confirmLabel = 'Confirm',
   cancelLabel = 'Cancel',
   destructive = false,
@@ -47,59 +40,69 @@ export default function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
-  // Close on Escape — listener is only attached while the dialog is open and
-  // cleaned up on unmount so no callbacks fire after the component is gone.
+  // Escape key dismisses the dialog (mirrors Modal.tsx / dashboard drawer).
   useEffect(() => {
     if (!open) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
         onCancel();
       }
     };
-
     document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
+    return () => document.removeEventListener('keydown', handleKeyDown);
   }, [open, onCancel]);
 
   if (!open) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      onClick={onCancel}
-      data-testid="confirm-dialog-backdrop"
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
       <div
-        role="dialog"
+        className="absolute inset-0 bg-black/40"
+        aria-hidden="true"
+        onClick={loading ? undefined : onCancel}
+      />
+
+      {/* Panel */}
+      <div
+        role="alertdialog"
         aria-modal="true"
-        aria-label={title}
-        tabIndex={-1}
-        className="card w-full max-w-sm p-6 outline-none"
-        onClick={(e) => e.stopPropagation()}
+        aria-labelledby="confirm-dialog-title"
+        aria-describedby="confirm-dialog-description"
+        className="relative z-10 w-full max-w-sm rounded-xl bg-white dark:bg-gray-900 p-6 shadow-xl"
       >
-        {title && <h2 className="mb-2 text-lg font-semibold">{title}</h2>}
-        <p className="mb-6 text-sm text-gray-600">{message ?? description}</p>
-        <div className="flex justify-end gap-3">
+        <h2
+          id="confirm-dialog-title"
+          className="text-base font-semibold text-gray-900 dark:text-gray-100"
+        >
+          {title}
+        </h2>
+        <p
+          id="confirm-dialog-description"
+          className="mt-2 text-sm text-gray-600 dark:text-gray-300"
+        >
+          {message}
+        </p>
+
+        <div className="mt-6 flex justify-end gap-3">
           <button
             type="button"
-            onClick={onCancel}
             disabled={loading}
-            className="btn-secondary"
+            onClick={onCancel}
+            className="btn-secondary disabled:opacity-50"
           >
             {cancelLabel}
           </button>
           <button
             type="button"
-            onClick={onConfirm}
             disabled={loading}
-            className={cn(
+            onClick={onConfirm}
+            className={
               destructive
-                ? 'bg-red-500 text-white hover:bg-red-600'
-                : 'btn-primary'
-            )}
+                ? 'rounded-md bg-red-500 px-4 py-2 text-sm font-medium text-white hover:bg-red-600 disabled:opacity-50'
+                : 'btn-primary disabled:opacity-50'
+            }
           >
             {loading ? 'Working...' : confirmLabel}
           </button>
